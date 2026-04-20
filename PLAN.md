@@ -84,9 +84,10 @@ Keep commits logically separated by concern (config / weight conversion / compon
    - Implement routing logic — shared layers should not compute their own K/V, just reference source
    - This is novel to TL; may require a small addition to attention component
 
-4. **Basic validation**
+4. **Basic validation** (run on Colab T4 — Pi cannot load E2B)
    - Forward pass: compare output logits to HuggingFace baseline (text-only)
-   - Target: < 1e-3 mean absolute difference on token logits
+   - Target: < 1e-3 logit MAE; also check < 1e-5 on residual stream tensors at selected layers
+   - Confirm tokenizer text-only mode does not accidentally trigger multimodal paths via reserved token IDs
 
 ### Deliverables
 - Extended `gemma.py` with Gemma 4 detection and weight mapping
@@ -118,14 +119,9 @@ Where `ple_vector` is computed from: token-identity embedding lookup + learned p
    - Zero-out PLE at any subset of layers via hook intervention
    - Useful for: measuring PLE contribution, isolating standard transformer processing
 
-3. **PLE diagnostic** (`notes/ple_analysis.md`)
-   - Per layer: compute `||PLE_residual|| / ||total_layer_output||`
-   - Run on representative text; plot per-layer contribution
-   - Hypothesis: PLE contribution larger in early layers (token identity), smaller in later (context dominates)
-
 ### Deliverables
 - PLE hook points implemented and documented
-- Diagnostic script + initial findings in `notes/ple_analysis.md`
+- Tests: hooks fire at correct layers, ablation (zero PLE at all layers) degrades but does not crash
 
 ---
 
@@ -166,14 +162,15 @@ Where `ple_vector` is computed from: token-identity embedding lookup + learned p
    - Tests: config, forward pass equivalence, hook point smoke test, PLE ablation
    - Documentation: E2B usage example, PLE hook point API reference
 
-3. **Mensmachina post: "What PLE does — mechanistic interpretability on Gemma 4"**
-   - Method: PLE diagnostic (Phase 3)
-   - Findings: per-layer PLE contribution, ablation results
-   - Conclusion: what PLE is and isn't doing; implications for using Gemma 4 for interpretability research
+3. **PLE diagnostic** (`notes/ple_analysis.md`) — separate from hook implementation
+   - Per layer: compute `||PLE_residual|| / ||total_layer_output||`
+   - Run on representative text; plot per-layer contribution
+   - Hypothesis: PLE contribution larger in early layers (token identity), smaller in later (context dominates)
 
-4. **Connect to sycophancy investigation**
-   - Once adapter is stable, run the multi-turn sycophancy dynamics experiment on Gemma 4 E2B
-   - See `notes/sycophancy_brief.md` (cross-reference with mensmachina-web research brief)
+4. **Mensmachina post: "What PLE does — mechanistic interpretability on Gemma 4"**
+   - Method: PLE diagnostic (above)
+   - Findings: per-layer PLE contribution, ablation results
+   - Conclusion: what PLE is and isn't doing; implications for Gemma 4 interpretability research
 
 ### Deliverables
 - TL issue open for Gemma 4
@@ -188,6 +185,19 @@ Where `ple_vector` is computed from: token-identity embedding lookup + learned p
 - Are PLE parameters in the same checkpoint file as the main weights, or separate? (affects weight loading)
 - What are the exact HF class names for Gemma 4? (`Gemma4ForCausalLM`? Confirm from `model.named_modules()`)
 - How does shared KV interact with activation patching? (patching a shared-KV layer vs. the source layer are different operations — document this clearly)
+- MatFormer slicing: is "2.3B effective" a learned slice of a 5.1B checkpoint, or does HF export a pre-sliced model? TL weight loading needs to handle whichever applies.
+- Shared KV: are K/V *weights* shared (one projection matrix used by multiple layers) or K/V *activations* shared (layer N attends to K/V computed by a different layer)? These require different implementations and different hook semantics.
+- What is the minimum `transformers` version required for the Gemma 4 HF class names to exist?
+- How does PLE's partial CPU offloading interact with TL's device assumptions for hook tensors? If PLE vectors are on CPU while the residual stream is on GPU, hook interventions will fail.
+- Will TL maintainers accept PLE as a first-class hook category (new TL mechanism), or require it to be model-specific? Should open a design-proposal issue before Phase 3 begins.
+
+## Known Risks
+
+- **PLE hook shape**: The plan's formulation (`h_out = standard_output + PLE_residual(ple_vec)`) may be too simple. PLE involves a gated combination with token-identity embeddings from a dedicated embedding table. Verify the actual forward pass graph before committing to hook placement and naming.
+- **Execution environment**: E2B has 5.1B raw parameters. Validation cannot run on the Pi — use Colab T4 (free tier) for all Phase 2+ runs. State this explicitly in session setup.
+- **Numerical threshold**: 1e-3 logit MAE is adequate for generation parity but insufficient for mechinterp. Target 1e-5 on residual stream tensors in addition to the logit check.
+- **Upstream coordination**: Adding PLE as a new hook mechanism is an API surface change. Contact a TL maintainer with a design proposal before Phase 3 implementation, not at PR submission.
+- **Timeline**: 1.5–2 weeks is optimistic if PLE hook shape or MatFormer slicing turns out to be complex. 3–4 weeks is a safer estimate to a mergeable PR.
 
 ---
 

@@ -1,4 +1,4 @@
-# Gemma 4 (Gemma 3n) E2B Architecture Notes
+# Gemma 4 E2B Architecture Notes
 
 *To be filled during Phase 1 — module enumeration via nnsight*
 

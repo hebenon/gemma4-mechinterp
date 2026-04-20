@@ -2,16 +2,16 @@
 
 Two interlinked projects:
 
-1. **TransformerLens support for Gemma 4 (Gemma 3n)** — native adapter via TransformerBridge, contributing to [issue #953](https://github.com/TransformerLensOrg/TransformerLens/issues/953). Scope: E2B text-only, with Per-Layer Embeddings (PLE) as explicit hook points rather than bypassed.
+1. **TransformerLens support for Gemma 4** — extending Gemma 3 support (PR #1149) to cover Gemma 4's novel elements: Per-Layer Embeddings (PLE) and shared KV cache. Scope: E2B text-only, PLE as explicit hook points. Note: Gemma 3n is a related but distinct model; issue #953 targets Gemma 3n. We will open a new TL issue for Gemma 4.
 
 2. **Mechinterp investigations** — using the new tooling to run interpretability research on Gemma 4. Initial investigation: multi-turn sycophancy dynamics (does accumulated social pressure degrade internal knowledge representations?). PLE diagnostic as a secondary contribution: what is PLE doing at each layer?
 
 ## Why Gemma 4
 
 - Apache 2.0 license — fully open for research and reuse
-- Novel architecture (PLE) not yet supported by any mechinterp tooling
+- Novel architecture (PLE, shared KV) not yet supported by any mechinterp tooling
 - Strong benchmarks across sizes — E2B fits on T4 GPU (free Colab tier)
-- TransformerLens #953 is open, unassigned, labeled complexity-high — a real gap, not duplicate work
+- Gemma 3 already in TL (PR #1149) — our work extends it rather than starting from scratch
 - The PLE diagnostic is itself a publishable finding about a novel architectural element
 
 ## Structure
@@ -20,7 +20,7 @@ Two interlinked projects:
 gemma4-mechinterp/
 ├── notes/
 │   ├── architecture.md       # Gemma 4 architecture map (module names, layer types)
-│   ├── tl_adapter_notes.md   # TransformerLens adapter implementation notes
+│   ├── tl_adapter_notes.md   # TransformerLens implementation notes
 │   └── ple_analysis.md       # PLE contribution findings (filled as experiments run)
 ├── notebooks/                # Investigation notebooks (Phase 2+)
 ├── PLAN.md                   # Detailed phased plan
@@ -30,7 +30,7 @@ gemma4-mechinterp/
 ## Repositories
 
 - **This repo**: Research notes, investigation notebooks, findings
-- **TransformerLens fork**: Implementation work — fork `TransformerLensOrg/TransformerLens`, PR target is #953
+- **TransformerLens fork**: Implementation work — fork `TransformerLensOrg/TransformerLens`
 
 ## Status
 
