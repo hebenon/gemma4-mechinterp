@@ -110,13 +110,46 @@ Our additions for Gemma 4:
 - PLE weight mapping: TBD from Phase 1 enumeration
 - Shared KV: need to determine if activation-sharing (no extra weights) or weight-sharing (one projection, multiple layers) — different handling
 
-## Shared KV — Implementation Question
+## Shared KV — Implementation Design (confirmed: activation sharing)
 
-**Activation sharing** (most likely): shared layers compute Q normally but attend to K/V from a source layer's computation. Requires caching source K/V and routing shared layers to use them. Hook semantics: `hook_k` and `hook_v` at shared layers return the borrowed tensors, not locally computed ones.
+Confirmed from HF source: shared layers skip K/V projection, borrow activations from `shared_kv_cache[kv_shared_layer_index]`. No weight changes needed for shared layers.
 
-**Weight sharing**: one K/V projection matrix referenced by multiple layer instances. Handled at weight loading time — no forward pass change.
+**TL implementation (Option A — dict passed through layer loop):**
 
-Need Phase 1 enumeration to determine which applies.
+```python
+# HookedTransformer.forward():
+shared_kv_cache = {}
+for l, block in enumerate(self.blocks):
+    resid = block(resid, ple_vec=ple_vecs[:, :, l, :], shared_kv_cache=shared_kv_cache)
+    # block stores K/V to shared_kv_cache if it's a source layer
+```
+
+```python
+# TransformerBlock.forward():
+if self.is_kv_shared_layer:
+    attn_out = self.attn(resid, shared_kv=shared_kv_cache[self.kv_shared_layer_index])
+else:
+    attn_out = self.attn(resid)
+    if self.store_kv_for_sharing:
+        shared_kv_cache[self.layer_idx] = self.attn.last_kv  # or return from attn
+```
+
+**Config/block flags needed:**
+- `cfg.num_kv_shared_layers: int` — how many terminal layers share KV
+- `cfg.first_kv_shared_layer_idx: int` — computed as `n_layers - num_kv_shared_layers`
+- Per-block: `block.is_kv_shared_layer: bool`, `block.kv_shared_layer_index: int`, `block.store_kv_for_sharing: bool`
+
+**Hook semantics at shared layers:**
+- `hook_k` and `hook_v` at shared layers expose the *borrowed* tensors from the source layer
+- Patching `hook_k` at a shared layer patches the copy being used for that layer's attention — does NOT affect the source layer or other shared layers using the same source
+- Patching `hook_k` at the *source* layer propagates to all downstream shared layers
+- Document this clearly in the API reference
+
+**Files to modify:**
+- `HookedTransformerConfig`: add `num_kv_shared_layers`, `first_kv_shared_layer_idx`
+- `TransformerBlock.__init__`: set `is_kv_shared_layer`, `kv_shared_layer_index`, `store_kv_for_sharing` from cfg + layer_idx
+- `AbstractAttention.forward()`: accept optional `shared_kv` param; when provided, skip K/V projection
+- `HookedTransformer.forward()`: manage `shared_kv_cache` dict across blocks
 
 ## Files to Modify in TL Fork
 
