@@ -19,6 +19,18 @@ hook_resid_pre
 
 Parallel mode: both attn and mlp read from `resid_pre`, outputs summed into `hook_resid_post`.
 
+## PLE — What It Actually Is
+
+From Google model card: "PLE gives each decoder layer its own small embedding for every token. These embedding tables are large but are only used for quick lookups."
+
+Key revision: PLE is a **token ID lookup**, not a projection of the residual stream. Each layer has its own embedding table; the PLE vector for a token is looked up by token ID directly. No residual stream dependency.
+
+Parameter accounting: E2B has 2.3B effective / 5.1B total → ~2.8B in PLE tables. Rough estimate: 26 layers × ~260K vocab × ~400 dims ≈ 2.7B. Consistent.
+
+Mechinterp implication: PLE is literally "remember what token this is, at this layer" — a constant identity signal alongside the context-accumulating residual stream. The diagnostic question (||PLE_residual|| / ||layer_output||) asks: how much of each layer's output is explained by token identity alone vs. contextual processing?
+
+Ablation design: zero `hook_ple_vector` → removes identity signal entirely. Replace with vocabulary average → removes identity specificity but preserves scale. Both are informative.
+
 ## PLE Integration Design
 
 **Approach**: PLE happens between the standard MLP output and `hook_resid_post`. This means `hook_resid_post` continues to represent the final layer output — consistent with all existing TL models. Non-PLE models are unaffected.
@@ -26,20 +38,23 @@ Parallel mode: both attn and mlp read from `resid_pre`, outputs summed into `hoo
 ```
 ... mlp_out
 → resid_standard = resid_mid + mlp_out
-→ ple_vec = PLE(resid_standard)           # hook_ple_vector applied here
+→ ple_vec = ple_embedding_table[layer][token_ids]   # pure lookup, no residual dependency
+→ ple_vec = hook_ple_vector(ple_vec)               # intervention point
 → resid_post = resid_standard + ple_vec
 → hook_resid_post(resid_post)
 → return resid_post
 ```
 
 New HookPoints in `TransformerBlock` when `cfg.use_ple=True`:
-- `hook_ple_vector` — the PLE conditioning vector `[batch, seq, d_model]`
+- `hook_ple_vector` — the PLE conditioning vector `[batch, seq, d_ple or d_model]`
 
 No `hook_ple_input` needed (it's identical to `resid_standard`, reconstructible from existing hooks). No `hook_ple_output` needed (`hook_resid_post` serves this role).
 
 **Ablation via hooks**: Zero out `hook_ple_vector` to remove PLE from any subset of layers — standard TL hook intervention, nothing special required.
 
 **Config flag**: `use_ple: bool = False` in `HookedTransformerConfig`. Only Gemma 4 sets this True.
+
+**Weight loading**: PLE tables are likely the "large but cheap" parameters — embed once, lookup many. Exact parameter names and shapes TBD from enumeration notebook output.
 
 ## Gemma 3 Weight Conversion Pattern (from `gemma.py`)
 
