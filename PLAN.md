@@ -45,6 +45,7 @@ Keep commits logically separated by concern (config / weight conversion / compon
    - Clone fork locally
    - Read `weight_conversions/gemma.py` and `loading_from_pretrained.py` as they stand post-#1149
    - Understand the Gemma 3 detection and weight mapping pattern — this is what we extend
+   - Study TL's hook mechanism (`HookPoint`, how hooks are registered per component) to assess the most idiomatic pattern for PLE: first-class hook category or model-specific hooks
 
 2. **Load Gemma 4 E2B via nnsight** to enumerate module structure
    - `model.named_modules()` — get full module tree
@@ -189,14 +190,14 @@ Where `ple_vector` is computed from: token-identity embedding lookup + learned p
 - Shared KV: are K/V *weights* shared (one projection matrix used by multiple layers) or K/V *activations* shared (layer N attends to K/V computed by a different layer)? These require different implementations and different hook semantics.
 - What is the minimum `transformers` version required for the Gemma 4 HF class names to exist?
 - How does PLE's partial CPU offloading interact with TL's device assumptions for hook tensors? If PLE vectors are on CPU while the residual stream is on GPU, hook interventions will fail.
-- Will TL maintainers accept PLE as a first-class hook category (new TL mechanism), or require it to be model-specific? Should open a design-proposal issue before Phase 3 begins.
+- Study TL's existing hook mechanism thoroughly in Phase 1 to determine the most idiomatic PLE implementation — first-class hook category vs. model-specific hooks. Implement, prove it works, then engage maintainers.
 
 ## Known Risks
 
 - **PLE hook shape**: The plan's formulation (`h_out = standard_output + PLE_residual(ple_vec)`) may be too simple. PLE involves a gated combination with token-identity embeddings from a dedicated embedding table. Verify the actual forward pass graph before committing to hook placement and naming.
 - **Execution environment**: E2B has 5.1B raw parameters. Validation cannot run on the Pi — use Colab T4 (free tier) for all Phase 2+ runs. State this explicitly in session setup.
 - **Numerical threshold**: 1e-3 logit MAE is adequate for generation parity but insufficient for mechinterp. Target 1e-5 on residual stream tensors in addition to the logit check.
-- **Upstream coordination**: Adding PLE as a new hook mechanism is an API surface change. Contact a TL maintainer with a design proposal before Phase 3 implementation, not at PR submission.
+- **Upstream coordination**: Adding PLE as a new hook mechanism is an API surface change. We will implement first in the most idiomatic way we can assess, prove it works, then engage maintainers. Accepted risk of post-implementation redesign feedback.
 - **Timeline**: 1.5–2 weeks is optimistic if PLE hook shape or MatFormer slicing turns out to be complex. 3–4 weeks is a safer estimate to a mergeable PR.
 
 ---
