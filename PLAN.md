@@ -182,19 +182,25 @@ Where `ple_vector` is computed from: token-identity embedding lookup + learned p
 
 ## Open Questions
 
-- What is the exact local/global attention pattern for Gemma 4 E2B? (Gemma 3 is 5:1; E2B may alternate 1:1 or use a different ratio)
-- Are PLE parameters in the same checkpoint file as the main weights, or separate? (affects weight loading)
-- What are the exact HF class names for Gemma 4? (`Gemma4ForCausalLM`? Confirm from `model.named_modules()`)
-- How does shared KV interact with activation patching? (patching a shared-KV layer vs. the source layer are different operations — document this clearly)
-- MatFormer slicing: is "2.3B effective" a learned slice of a 5.1B checkpoint, or does HF export a pre-sliced model? TL weight loading needs to handle whichever applies.
-- Shared KV: are K/V *weights* shared (one projection matrix used by multiple layers) or K/V *activations* shared (layer N attends to K/V computed by a different layer)? These require different implementations and different hook semantics.
-- What is the minimum `transformers` version required for the Gemma 4 HF class names to exist?
-- How does PLE's partial CPU offloading interact with TL's device assumptions for hook tensors? If PLE vectors are on CPU while the residual stream is on GPU, hook interventions will fail.
-- Study TL's existing hook mechanism thoroughly in Phase 1 to determine the most idiomatic PLE implementation — first-class hook category vs. model-specific hooks. Implement, prove it works, then engage maintainers.
+**Resolved from HF source reading (2026-04-20):**
+- ~~HF class names~~ → `Gemma4ForCausalLM` (text-only), `Gemma4TextConfig`
+- ~~Attention pattern~~ → 5:1 sliding/full, same as Gemma 3; `config.layer_types` list; existing TL machinery handles it
+- ~~Shared KV: weight vs activation sharing~~ → **activation sharing** confirmed. Layers past `first_kv_shared_layer_idx` skip K/V computation and borrow from `kv_shared_layer_index`
+- ~~PLE hook shape~~ → gated bottleneck: Linear(2304→256) × ple_vec → Linear(256→2304). NOT a simple additive residual.
+- ~~TL hook mechanism~~ → `HookPoint()` as class attribute, `setup()` auto-discovers. Pattern settled in notes.
+
+**Still open (need enumeration notebook):**
+- What is `num_kv_shared_layers` for E2B specifically? (config default is 0 but E2B likely non-zero)
+- What is the exact `layer_types` list for E2B? (5:1 with 30 layers — need the full list)
+- What activation function is used in `per_layer_input_gate`?
+- Minimum `transformers` version for `Gemma4ForCausalLM` to exist
+- How does PLE precomputation device placement interact with TL's hook tensor device assumptions?
+- How does shared KV interact with activation patching? (patching a shared-KV layer vs. source layer — document clearly)
+- MatFormer: does HF export a pre-sliced checkpoint for E2B, or must we slice the full 5.1B at load time?
 
 ## Known Risks
 
-- **PLE hook shape**: The plan's formulation (`h_out = standard_output + PLE_residual(ple_vec)`) may be too simple. PLE involves a gated combination with token-identity embeddings from a dedicated embedding table. Verify the actual forward pass graph before committing to hook placement and naming.
+- **PLE hook shape**: ~~Resolved~~ — PLE is a gated bottleneck (Linear 2304→256, gate × ple_vec, Linear 256→2304). Hook design: `hook_ple_input` [B,L,256] and `hook_ple_output` [B,L,2304]. See `notes/tl_adapter_notes.md`.
 - **Execution environment**: E2B has 5.1B raw parameters. Validation cannot run on the Pi — use Colab T4 (free tier) for all Phase 2+ runs. State this explicitly in session setup.
 - **Numerical threshold**: 1e-3 logit MAE is adequate for generation parity but insufficient for mechinterp. Target 1e-5 on residual stream tensors in addition to the logit check.
 - **Upstream coordination**: Adding PLE as a new hook mechanism is an API surface change. We will implement first in the most idiomatic way we can assess, prove it works, then engage maintainers. Accepted risk of post-implementation redesign feedback.
