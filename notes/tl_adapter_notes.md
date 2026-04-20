@@ -19,42 +19,84 @@ hook_resid_pre
 
 Parallel mode: both attn and mlp read from `resid_pre`, outputs summed into `hook_resid_post`.
 
-## PLE — What It Actually Is
+## PLE — What It Actually Is (from HF source)
 
-From Google model card: "PLE gives each decoder layer its own small embedding for every token. These embedding tables are large but are only used for quick lookups."
+**Two-stage computation in `Gemma4TextModel`:**
 
-Key revision: PLE is a **token ID lookup**, not a projection of the residual stream. Each layer has its own embedding table; the PLE vector for a token is looked up by token ID directly. No residual stream dependency.
+**Stage 1 — Token identity component** (computed once, shared across all layers):
+```python
+embed_tokens_per_layer: Embedding(vocab_size_per_layer_input=262144, num_layers * d_ple = 30*256)
+per_layer_inputs = embed_tokens_per_layer(input_ids).reshape(B, L, num_layers, 256)
+```
 
-Parameter accounting: E2B has 2.3B effective / 5.1B total → ~2.8B in PLE tables. Rough estimate: 26 layers × ~260K vocab × ~400 dims ≈ 2.7B. Consistent.
+**Stage 2 — Context-aware component** (also computed once from initial embeddings):
+```python
+per_layer_model_projection: Linear(d_model=2304, num_layers * d_ple = 7680, bias=False)
+context_proj = per_layer_model_projection(inputs_embeds) * hidden_size**-0.5
+context_proj = context_proj.reshape(B, L, num_layers, 256)
+context_proj = per_layer_projection_norm(context_proj)  # RMSNorm
 
-Mechinterp implication: PLE is literally "remember what token this is, at this layer" — a constant identity signal alongside the context-accumulating residual stream. The diagnostic question (||PLE_residual|| / ||layer_output||) asks: how much of each layer's output is explained by token identity alone vs. contextual processing?
+ple_vec = (context_proj + token_identity) * (2**-0.5)  # combined: [B, L, num_layers, 256]
+```
 
-Ablation design: zero `hook_ple_vector` → removes identity signal entirely. Replace with vocabulary average → removes identity specificity but preserves scale. Both are informative.
+**Per decoder layer — gated bottleneck (NOT simple additive residual):**
+```python
+residual = hidden_states
+gate = act_fn(per_layer_input_gate(hidden_states))  # Linear(2304, 256): [B, L, 256]
+gated = gate * ple_vec[layer_idx]                   # element-wise: [B, L, 256]
+out = per_layer_projection(gated)                    # Linear(256, 2304): [B, L, 2304]
+out = post_per_layer_input_norm(out)                 # RMSNorm
+hidden_states = residual + out
+hidden_states *= layer_scalar                        # learned per-layer scalar
+```
 
-## PLE Integration Design
+**Key insight**: PLE is a **PLE-conditioned bottleneck projection** of the residual stream — not an additive signal. The PLE vector acts as a gate multiplied against hidden_states projected down to d=256. The residual stream modulates what gets gated.
 
-**Approach**: PLE happens between the standard MLP output and `hook_resid_post`. This means `hook_resid_post` continues to represent the final layer output — consistent with all existing TL models. Non-PLE models are unaffected.
+**Parameter accounting**: E2B (30 layers, d=2304, d_ple=256, vocab_ple=262144):
+- `embed_tokens_per_layer`: 262144 × 7680 ≈ 2.0B params
+- `per_layer_model_projection`: 2304 × 7680 ≈ 0.018B
+- Per-layer PLE weights (30 layers): `per_layer_input_gate` (2304×256) + `per_layer_projection` (256×2304) ≈ 2×0.59M × 30 ≈ 0.35B
+- Total PLE: ~2.4B → consistent with 5.1B - 2.3B = 2.8B gap
+
+**Mechinterp implication**: PLE's contribution depends on BOTH the PLE vector AND the current hidden state (via the gate projection). This is richer than "token identity signal added per layer" — it's "token identity modulates how much of each dimension of the residual passes through the bottleneck."
+
+**Ablation design revisions**:
+- Zero `hook_ple_vector` → removes PLE conditioning entirely (gate × 0 = 0, bottleneck outputs 0)
+- Zero `hook_ple_gate` → same effect from the hidden-states side
+- Vocabulary-mean `hook_ple_vector` → removes token specificity, preserves scale
+
+## PLE Integration Design (revised)
+
+PLE is a gated bottleneck applied AFTER the standard MLP output, before `hook_resid_post`. `hook_resid_post` continues to be the final layer output (including PLE) — consistent with all TL models.
 
 ```
 ... mlp_out
 → resid_standard = resid_mid + mlp_out
-→ ple_vec = ple_embedding_table[layer][token_ids]   # pure lookup, no residual dependency
-→ ple_vec = hook_ple_vector(ple_vec)               # intervention point
-→ resid_post = resid_standard + ple_vec
-→ hook_resid_post(resid_post)
-→ return resid_post
+→ ple_vec = hook_ple_input(ple_vecs[layer])            # [B, L, 256] — intervene here to ablate
+→ gate = act_fn(W_gate(resid_standard))                # [B, L, 256]
+→ ple_out = hook_ple_output(W_up(gate * ple_vec))      # [B, L, 2304] — the bottleneck output
+→ resid_post = resid_standard + LayerNorm(ple_out)
+→ resid_post = hook_resid_post(resid_post * layer_scalar)
 ```
 
 New HookPoints in `TransformerBlock` when `cfg.use_ple=True`:
-- `hook_ple_vector` — the PLE conditioning vector `[batch, seq, d_ple or d_model]`
+- `hook_ple_input` — the PLE conditioning vector for this layer `[batch, seq, d_ple]` (d_ple=256)
+- `hook_ple_output` — the bottleneck output before adding to residual `[batch, seq, d_model]`
 
-No `hook_ple_input` needed (it's identical to `resid_standard`, reconstructible from existing hooks). No `hook_ple_output` needed (`hook_resid_post` serves this role).
+**Ablation via hooks**:
+- Zero `hook_ple_input` → removes PLE conditioning (gate × 0 = 0)
+- Zero `hook_ple_output` → removes PLE contribution after computation
 
-**Ablation via hooks**: Zero out `hook_ple_vector` to remove PLE from any subset of layers — standard TL hook intervention, nothing special required.
+**PLE precomputation**: PLE vectors are computed ONCE in the model forward pass (Stage 1 + Stage 2 from both `embed_tokens_per_layer` and `per_layer_model_projection`), then passed per-layer. In TL, this precomputation runs before the layer loop — we pass `ple_vecs[layer_idx]` into each `TransformerBlock`.
 
-**Config flag**: `use_ple: bool = False` in `HookedTransformerConfig`. Only Gemma 4 sets this True.
+**Config additions needed**:
+- `use_ple: bool = False`
+- `d_ple: int = 0` (= hidden_size_per_layer_input)
+- `ple_vocab_size: int = 0` (= vocab_size_per_layer_input, 262144)
+- `num_kv_shared_layers: int = 0`
+- `layer_scalar: bool = False` (per-layer learned scale, new in Gemma 4)
 
-**Weight loading**: PLE tables are likely the "large but cheap" parameters — embed once, lookup many. Exact parameter names and shapes TBD from enumeration notebook output.
+**Attention pattern**: config.layer_types list → "sliding_attention" / "full_attention" with 5:1 ratio. Same as Gemma 3 — existing TL machinery from PR #1149 handles this unchanged.
 
 ## Gemma 3 Weight Conversion Pattern (from `gemma.py`)
 
