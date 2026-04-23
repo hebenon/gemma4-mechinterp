@@ -73,7 +73,7 @@ PLE is a gated bottleneck applied AFTER the standard MLP output, before `hook_re
 ... mlp_out
 → resid_standard = resid_mid + mlp_out
 → ple_vec = hook_ple_input(ple_vecs[layer])            # [B, L, 256] — intervene here to ablate
-→ gate = act_fn(W_gate(resid_standard))                # [B, L, 256]
+→ gate = hook_ple_gate(act_fn(W_gate(resid_standard))) # [B, L, 256] — gate activations
 → ple_out = hook_ple_output(W_up(gate * ple_vec))      # [B, L, 2304] — the bottleneck output
 → resid_post = resid_standard + LayerNorm(ple_out)
 → resid_post = hook_resid_post(resid_post * layer_scalar)
@@ -81,10 +81,19 @@ PLE is a gated bottleneck applied AFTER the standard MLP output, before `hook_re
 
 New HookPoints in `TransformerBlock` when `cfg.use_ple=True`:
 - `hook_ple_input` — the PLE conditioning vector for this layer `[batch, seq, d_ple]` (d_ple=256)
+- `hook_ple_gate` — the gate activations after act_fn, before elementwise multiply `[batch, seq, d_ple]`
 - `hook_ple_output` — the bottleneck output before adding to residual `[batch, seq, d_model]`
 
+New HookPoints in `HookedTransformer.forward()` precomputation when `cfg.use_ple=True`:
+- `hook_ple_token_embeds` — token identity component `[batch, seq, n_layers, d_ple]` (from `embed_tokens_per_layer`)
+- `hook_ple_context_proj` — context component `[batch, seq, n_layers, d_ple]` (from `per_layer_model_projection` + RMSNorm)
+
+These model-level hooks enable decomposing ple_vec into its two constituents for ablation and attribution experiments.
+
 **Ablation via hooks**:
-- Zero `hook_ple_input` → removes PLE conditioning (gate × 0 = 0)
+- Zero `hook_ple_input` at layer L → removes PLE conditioning for that layer (gate × 0 = 0)
+- Zero `hook_ple_token_embeds` → replaces token identity with zero, context only
+- Zero `hook_ple_context_proj` → replaces context projection with zero, token identity only
 - Zero `hook_ple_output` → removes PLE contribution after computation
 
 **PLE precomputation**: PLE vectors are computed ONCE in the model forward pass (Stage 1 + Stage 2 from both `embed_tokens_per_layer` and `per_layer_model_projection`), then passed per-layer. In TL, this precomputation runs before the layer loop — we pass `ple_vecs[layer_idx]` into each `TransformerBlock`.

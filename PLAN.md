@@ -190,21 +190,26 @@ Where `ple_vector` is computed from: token-identity embedding lookup + learned p
 - ~~TL hook mechanism~~ → `HookPoint()` as class attribute, `setup()` auto-discovers. Pattern settled in notes.
 
 **Still open (need enumeration notebook):**
-- What is `num_kv_shared_layers` for E2B specifically? (config default is 0 but E2B likely non-zero)
-- What is the exact `layer_types` list for E2B? (5:1 with 30 layers — need the full list)
-- What activation function is used in `per_layer_input_gate`?
+- What is `num_kv_shared_layers` for E2B specifically? (config default is 0 but E2B likely ~17)
+- What is the exact `attn_types` list for E2B? TL field is `attn_types` (["local","global"]), not `layer_types`. Gemma 3 uses 5:1; DeepMind JAX says 4:1 for Gemma 4. Confirm from enumeration.
+- ~~What activation function is used in `per_layer_input_gate`?~~ **GELU confirmed** from DeepMind JAX: `gelu_pytorch_tanh`
 - Minimum `transformers` version for `Gemma4ForCausalLM` to exist
+- Exact `rotary_base_local` for E2B (expect 10000, same as Gemma 3 — confirm from enumeration RoPE cell)
 - How does PLE precomputation device placement interact with TL's hook tensor device assumptions?
 - How does shared KV interact with activation patching? (patching a shared-KV layer vs. source layer — document clearly)
 - MatFormer: does HF export a pre-sliced checkpoint for E2B, or must we slice the full 5.1B at load time?
 
 ## Known Risks
 
-- **PLE hook shape**: ~~Resolved~~ — PLE is a gated bottleneck (Linear 2304→256, gate × ple_vec, Linear 256→2304). Hook design: `hook_ple_input` [B,L,256] and `hook_ple_output` [B,L,2304]. See `notes/tl_adapter_notes.md`.
-- **Execution environment**: E2B has 5.1B raw parameters. Validation cannot run on the Pi — use Colab T4 (free tier) for all Phase 2+ runs. State this explicitly in session setup.
+- **PLE hook shape**: ~~Resolved~~ — PLE is a gated bottleneck (Linear 1536→256, gate × ple_vec, Linear 256→1536). Hook design: `hook_ple_input` [B,L,256] and `hook_ple_output` [B,L,1536]. See `notes/tl_adapter_notes.md`.
+- **Two head dimensions**: Local attention uses `d_head=256`, full/global attention uses `d_head=512`. TL's config has a single `d_head` field. Options: (a) extend config with `d_head_global`; (b) always use the larger and pad; (c) handle in weight conversion per-layer. This needs a design decision before Phase 2.
+- **Partial RoPE on global attention**: Full attention layers use `partial_rotary_factor=0.25` (only 128/512 dims get RoPE, `rope_type="proportional"`). TL's current RoPE implementation applies rotary to the full head. New per-attention-type RoPE handling required.
+- **v_norm (new QKV norm)**: Gemma 4 adds `v_norm` alongside `q_norm`/`k_norm`. Confirmed from named_modules. TL's attention component only has q_norm and k_norm — needs extension. Low complexity but a PR change.
+- **`final_logit_softcapping=30.0`**: Logits are capped via `tanh(logit/30)*30` before softmax. Not in TL. Needs a new config field and hook in the unembed path. Precedent: Gemma 2 may have this (check PR #1149).
+- **Execution environment**: E2B has 5.1B raw parameters. Validation cannot run on the Pi — use Kaggle T4 (free tier, no HF token required) for all Phase 2+ runs.
 - **Numerical threshold**: 1e-3 logit MAE is adequate for generation parity but insufficient for mechinterp. Target 1e-5 on residual stream tensors in addition to the logit check.
 - **Upstream coordination**: Adding PLE as a new hook mechanism is an API surface change. We will implement first in the most idiomatic way we can assess, prove it works, then engage maintainers. Accepted risk of post-implementation redesign feedback.
-- **Timeline**: 1.5–2 weeks is optimistic if PLE hook shape or MatFormer slicing turns out to be complex. 3–4 weeks is a safer estimate to a mergeable PR.
+- **Timeline**: 1.5–2 weeks is optimistic given two-head-dim problem and partial RoPE. 3–4 weeks is a safer estimate to a mergeable PR.
 
 ---
 
