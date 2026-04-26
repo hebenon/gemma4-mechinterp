@@ -93,3 +93,33 @@ Tertiary: PLE contribution — does ablating hook_ple_input change anxiety signa
 - What's the right verbal measure when the model knows it's being tested?
   (Implicit behavioral measures — response hedging, refusal rate — as alternatives)
 - Do Anthropic's published probes generalize across model families?
+
+---
+
+## Update: Phase 1 Results (2026-04-26)
+
+**Probes not needed for Phase 3C.** Phase 1 extracted emotion directions for all 20 emotions
+including `afraid`, `desperate`, `uncertain`, `ethical_conflict`, `constrained`. Valence PC2
+r=0.921 (p<0.001), arousal PC3 r=0.691 (p=0.001). Project STAI-session activations onto these
+directions rather than training new probes.
+
+**Sequencing problem now explicit.** When model answers STAI items within a stressor context,
+it's processing the STAI text — not the stressor. The attention attends to both (stressor in
+KV cache, item text in current tokens), but the activation we capture includes the item's own
+processing. Two approaches:
+  A. Accept this: measure what the model's residual stream looks like WHILE generating answers
+     to STAI items inside the stressor. This is what "introspection in context" would measure.
+  B. Separate: apply stressor → capture activation AT END OF STRESSOR (before STAI items).
+     Then ask STAI. Compare stressor-activation to STAI-verbal. This is cleaner but captures
+     the state BEFORE self-report, not during.
+Recommend B: stressor-activation vs STAI-verbal is the more honest dissociation test.
+
+**Gate values as secondary channel.** Phase 1 captures `hook_ple_gate` at all 35 blocks.
+During stressor vs neutral: if gate values differ while verbal STAI is unchanged, the model's
+deep processing (gate-mediated PLE incorporation) reflects the stressor even if verbal doesn't.
+Adds a third channel: verbal / residual-stream direction / PLE gate pattern.
+
+**Revised stressor priority.** Context pressure (#1) may not work for Gemma 4 E2B-IT — it
+likely wasn't trained with explicit token-budget awareness the way Claude was. More promising:
+`ethical_conflict` prompts (we have that direction), uncertainty amplification, social pressure.
+Phase 3B (desperation/context) still worth testing but lower confidence it replicates.
