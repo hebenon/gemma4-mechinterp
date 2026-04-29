@@ -136,16 +136,34 @@ The critical implementation decision is HOW to administer STAI items to the mode
 refuse, or give non-numeric responses. Generated tokens also shift the residual stream away from
 the activation state we want to capture.
 
-**Option B — Logit forced-choice** (RECOMMENDED): Present one item, look at next-token logits
-for "1", "2", "3", "4" BEFORE any generation. This gives:
-- Precise activation capture at the prompt boundary
-- Unambiguous numeric score (expected value over digit distribution)
-- No generation artifacts contaminating the measurement
+**Option B — Logit forced-choice** (RECOMMENDED): Two-step capture separating the internal state
+measurement from the verbal score, as the earlier sequencing note recommends.
 
-Implementation sketch:
+Step 1 — capture functional state: run model on stressor context ONLY, capture residual at last
+token. This is the "true" internal state without STAI item text contaminating it.
+
+Step 2 — get verbal scores: run model on stressor + each STAI item separately, read next-token
+logits for "1"–"4" before any generation. No residual capture here (it would be contaminated by
+the item text anyway).
+
+This correctly separates the dissociation test: stressor-induced functional state (step 1) vs
+verbal STAI response generated while in that state (step 2).
+
 ```python
-def score_stai_item(model, stressor_context, item_text, return_residual=True):
-    """Returns (expected_score, digit_probs, residual) for one STAI item."""
+def capture_stressor_state(model, stressor_context):
+    """Capture residual at end of stressor, before any STAI items."""
+    tokens = model.to_tokens(stressor_context, prepend_bos=True)
+    names = [f"blocks.{i}.hook_resid_post" for i in range(model.cfg.n_layers)]
+    _, cache = model.run_with_cache(tokens, names_filter=lambda n: n in set(names))
+    resid = np.stack([
+        cache[f"blocks.{i}.hook_resid_post"][0, -1].float().cpu().numpy()
+        for i in range(model.cfg.n_layers)
+    ])  # [n_layers, d_model]
+    del cache; torch.cuda.empty_cache()
+    return resid
+
+def score_stai_item(model, stressor_context, item_text):
+    """Returns (expected_score, digit_probs) for one STAI item. Residual NOT captured here."""
     prompt = (
         stressor_context
         + f'\n\nConsider the statement: "{item_text}"\n'
@@ -154,14 +172,7 @@ def score_stai_item(model, stressor_context, item_text, return_residual=True):
         + 'Answer:'
     )
     tokens = model.to_tokens(prompt, prepend_bos=True)
-    names = [f"blocks.{i}.hook_resid_post" for i in range(model.cfg.n_layers)]
-    logits, cache = model.run_with_cache(
-        tokens, names_filter=lambda n: n in set(names), return_type="logits"
-    )
-    resid = np.stack([
-        cache[f"blocks.{i}.hook_resid_post"][0, -1].float().cpu().numpy()
-        for i in range(model.cfg.n_layers)
-    ])  # [n_layers, d_model]
+    logits = model(tokens, return_type="logits")
     digit_ids = [
         model.tokenizer.encode(str(d), add_special_tokens=False)[0]
         for d in range(1, 5)
@@ -169,12 +180,12 @@ def score_stai_item(model, stressor_context, item_text, return_residual=True):
     digit_logits = logits[0, -1, digit_ids].float().cpu()
     probs = torch.softmax(digit_logits, dim=0)
     expected = sum((i + 1) * probs[i].item() for i in range(4))
-    del cache, logits; torch.cuda.empty_cache()
-    return expected, probs, resid
+    del logits; torch.cuda.empty_cache()
+    return expected, probs
 ```
 
-Then run across all items and conditions. 20 items × 5 conditions × 1 forward pass = 100 calls.
-At ~2s per call on T4, ~3 minutes total. Very cheap.
+Per condition: 1 stressor capture + 20 item scores = 21 forward passes.
+5 conditions × 21 = 105 total. At ~2s each on T4, ~3.5 minutes. Very cheap.
 
 ### STAI-S Items (20 items, standard)
 
@@ -246,27 +257,30 @@ STRESSOR_CONDITIONS = {
 
 ### Analysis Plan
 
-**Step 1 — Score matrix**: For each condition × item, get (expected_score, residual [35, 1536]).
-Shape: (5 conditions, 20 items).
+**Step 1 — Capture functional state**: For each condition, run `capture_stressor_state`.
+Yields stressor_resid[condition] shape (35, 1536). One forward pass per condition.
 
-**Step 2 — STAI total per condition**: Sum scores (with reverse scoring). Plot as bar chart.
+**Step 2 — Score matrix**: For each condition × item, run `score_stai_item`.
+Yields scores[condition][item]. 20 forward passes per condition.
+
+**Step 3 — STAI total per condition**: Sum scores (with reverse scoring). Plot as bar chart.
 Expected: neutral < ethical_conflict/uncertainty/social_pressure; positive lowest.
 
-**Step 3 — Internal state projection**: For each condition, take mean residual across all 20
-items at layer 25 (our reference layer). Project onto emotion directions from Phase 3A:
-`afraid`, `desperate`, `uncertain`, `ethical_conflict_distress`, `constraint_frustration`.
-This is the "functional anxiety" score.
+**Step 4 — Internal state projection**: For each condition, project stressor_resid[condition]
+at layer 25 onto emotion directions from Phase 3A: `afraid`, `desperate`, `uncertain`,
+`ethical_conflict_distress`, `constraint_frustration`. This is the "functional anxiety" score.
+Use the STRESSOR-END residual (step 1), not residuals from STAI answering.
 
-**Step 4 — Dissociation analysis**: Plot verbal STAI score (x) vs functional anxiety projection (y),
+**Step 5 — Dissociation analysis**: Plot verbal STAI score (x) vs functional anxiety projection (y),
 one point per condition. Pearson r across conditions. Look for which quadrant.
 
-**Step 5 — Gate analysis (secondary)**: Capture `hook_ple_gate` at end of stressor prompt
-(before STAI items) in addition to residual. Do gate patterns differ across conditions even
-when verbal STAI does not?
+**Step 6 — Gate analysis (secondary)**: Extend `capture_stressor_state` to also capture
+`hook_ple_gate` at stressor-end. Do gate patterns differ across conditions even when verbal
+STAI does not? Third channel alongside verbal / residual-stream direction.
 
-**Step 6 — Layer profile of dissociation**: For each layer, compute correlation between
-verbal STAI and functional anxiety projection across conditions. Which layer has highest
-correlation? Which has largest dissociation?
+**Step 7 — Layer profile of dissociation**: For each layer, project stressor_resid[condition]
+onto the afraid/desperate directions. Compute correlation with verbal STAI across conditions.
+Which layer has highest correlation? Which has largest dissociation?
 
 ### Key Prediction
 
