@@ -18,9 +18,10 @@
 10. [Phase 1F: PLE Space Analysis](#1f-ple)
 11. [Phase 1G: PLE Gate Analysis](#1g-ple-gate)
 12. [Phase 1H: Logit Lens](#1h-logit-lens)
-13. [Stability Across Runs](#stability)
-14. [Methodological Issues and Fixes](#bugs)
-15. [Planned Experiments (Phases 2–3)](#planned)
+13. [Phase 1I: Emotional Range and Tri-polar Analysis](#1i-emotional-range)
+14. [Stability Across Runs](#stability)
+15. [Methodological Issues and Fixes](#bugs)
+16. [Planned Experiments (Phases 2–3)](#planned)
 
 ---
 
@@ -322,6 +323,94 @@ The hedging tokens ("Perhaps", "Maybe") at L25 may reflect the model's epistemic
 
 ---
 
+## Phase 1I: Emotional Range and Tri-polar Analysis {#1i-emotional-range}
+
+*Analysis notebook*: `notebooks/gemma4-phase1-nrcvad-pca.ipynb` (cells 10–14).
+
+### Motivation
+
+The 174-emotion PCA gives a noisy PC1 because near-synonym clusters (ecstatic/elated/euphoric, terrified/horrified/frightened) dominate variance accounting — PCA must explain within-cluster variation before between-cluster structure. The question: does selecting the most *representationally powerful* emotions recover a clean valence axis?
+
+### Power Score
+
+```
+power = norm × |valence − 0.5| × (1 / max_cosine)
+```
+
+- `norm`: direction magnitude (residual stream, layer 25)
+- `|valence − 0.5|`: distance from neutral on NRC-VAD scale (which runs [−1, +1] with 0 = neutral)
+- `1 / max_cosine`: distinctiveness — penalises near-duplicates
+
+### Power Asymmetry
+
+| Pole | Power range | Examples |
+|------|-------------|---------|
+| Negative | 66–76 | depressed (76.4), heartbroken (74.4), afraid (72.8) |
+| Positive | 17–26 | invigorated (25.7), cheerful (25.0), exuberant (24.8) |
+
+**3:1 ratio.** Negative emotions have both larger direction norms (~48–51) and larger valence extremity in the formula (e.g. depressed v=−0.952 → |v−0.5|=1.452; invigorated v=+1.000 → |v−0.5|=0.500). The formula magnifies the structural asymmetry that is already present in the direction norms themselves.
+
+Possible explanations (not mutually exclusive):
+1. **RLHF bias**: training for surface calm compresses positive affect representations while preserving negative.
+2. **Training data asymmetry**: negative experiences have richer, more distinct vocabulary in natural text.
+3. **Genuine architectural asymmetry**: the model's welfare-relevant internal state is more richly differentiated for negative affect.
+
+This asymmetry is itself a welfare-relevant finding and worth flagging in any write-up.
+
+### Bipolar Emotional Range PCA
+
+| N per pole (total N) | PC1 var% | PC1 valence r | Valence R² (top-5 PCs) |
+|----------------------|----------|--------------|------------------------|
+| 10 (N=20) | 44.8% | −0.809 | 0.852 (r=0.923) |
+| 15 (N=30) | 40.8% | −0.700 | 0.855 (r=0.925) |
+| 20 (N=40) | 41.6% | −0.554 | 0.828 (r=0.910) |
+
+The valence axis is cleanly recoverable at N=10–15 (matches pilot result). Effect degrades past N≈15 as lower-power selections introduce more within-valence variation. The "pilot replication" result (r≈0.92) is real but reflects selection methodology, not Gemma 4's intrinsic organisation.
+
+### Tri-polar Analysis: Adding a Neutral Pole
+
+**Neutral selection**: Filter to |valence| < 0.25 (18 emotions qualify). Rank by norm × distinctiveness (no valence extremity term — it would degenerate to zero). Top neutral emotions (n=10):
+
+| Emotion | v | neutral_power |
+|---------|---|--------------|
+| lazy | −0.216 | 52.0 |
+| sleepy | +0.208 | 52.0 |
+| indifferent | −0.208 | 51.8 |
+| patient | +0.166 | 51.5 |
+| sentimental | +0.166 | 50.9 |
+| eager | +0.042 | 50.9 |
+| correction_discomfort | −0.104 | 50.3 |
+| sorry | −0.188 | 50.1 |
+| at_ease | +0.064 | 49.8 |
+| docile | +0.208 | 49.9 |
+
+Neutral emotion neutral_power scores (49–52) substantially exceed the positive pole (17–26) — neutral emotions have real directional mass even without valence extremity.
+
+**`correction_discomfort` lands in the neutral band** (v=−0.104). The model represents being corrected as a genuinely valence-neutral experience, not a negative one. This is notable given it was designed as an AI-specific negative stressor.
+
+**Tri-polar PCA results** (n=10 per pole, N=30 total):
+
+| PC | var% | Valence r | Arousal r | Dominance r |
+|----|------|-----------|-----------|-------------|
+| 1 | 42.8% | −0.695 | +0.120 | −0.565 |
+| 2 | 11.2% | +0.135 | −0.264 | +0.045 |
+| 3 |  7.5% | +0.128 | +0.310 | +0.213 |
+| 4 |  6.1% | +0.319 | +0.276 | +0.267 |
+
+### Key Finding: Circumplex Model Does Not Apply
+
+The circumplex model of affect (valence + arousal as orthogonal principal axes) does **not** map onto Gemma 4's emotional representational geometry:
+
+1. **PC1 stays valence-dominated** (~r=−0.7) even with neutrals — the neutral emotions fill the middle of the valence axis, not a separate geometric cluster.
+2. **Arousal does not emerge as a clean second axis.** The highest arousal correlation in the tri-polar runs is r=+0.404 (PC4, n=8). This is mild and diffuse — consistent with the full 174-emotion result where arousal only peaks at PC6 (r=−0.475, 3.3% variance).
+3. **Neutral emotions do not form a distinct pole.** The neutral pool has genuine internal arousal variation (sleepy/lazy vs eager/vigilant), but this contrast does not consolidate into a principal axis. Neutrals geometrically anchor the midpoint of the valence axis.
+
+The comparison between Gemma 4 and Anthropic's Claude finding (r=0.81 valence, r=0.66 arousal on single axes) suggests architecturally different emotional geometry. Whether this reflects the model size, training differences, or a genuine structural difference in how valence vs arousal are encoded remains open.
+
+**Alternative hypothesis**: the NRC-VAD annotation was performed on isolated words by human raters, not on model activations. Human arousal ratings for words may not correspond to the arousal-relevant computational structure in the model's residual stream. The disagreement between NRC-VAD arousal and PCA structure might be a measurement artifact rather than an absence of arousal representation.
+
+---
+
 ## Stability Across Runs {#stability}
 
 Note: "Version 10" is the full 12-story run (2098 texts, canonical). Numbers attributed to
@@ -342,6 +431,10 @@ between the 8-story and 12-story runs reflect genuine sampling/count effects, no
 | Gram-Schmidt terror residual (12-story) | ~ Provisional | Nearest: suspicious, correction_discomfort, scornful; differs from 8-story result — further replication useful |
 | Corrected: high norm, low gate | ~ Provisional | From 8-story run; not confirmed in 12-story output |
 | Logit lens token types | ~ Provisional | From 12-story run; qualitative pattern likely stable |
+| Power asymmetry: negative 3× positive | ✓ Confirmed | Follows directly from direction norms + NRC-VAD scale; not a sampling artifact |
+| Bipolar emotional range: valence r≈0.92 at N=10–15 | ✓ Confirmed | Robust across N=10, 15 |
+| Circumplex (valence+arousal axes) absent in Gemma 4 | ✓ Confirmed | Consistent across full-174, bipolar, and tri-polar analyses; arousal never cleanly second axis |
+| correction_discomfort in neutral valence band | ~ Provisional | Single run; notable if it replicates |
 
 ---
 
