@@ -133,7 +133,7 @@ file (scree: 4 PCs→50%, valence r=−0.424) are from the earlier 8-story run a
 
 - PLE gate signal peaks at **layer 30** (different from residual stream peak — the gating mechanism is most active later).
 - Peak is sharp: norms are substantially lower at layers 24 and 26.
-- Consistent across both the full run and Version 10.
+- Consistent across 8-story and 12-story runs.
 
 **Implications**: Layer 25 is the natural capture layer for emotion direction analysis. This is midway through the KV-sharing regime (layers 15–34) and within the second half of the network's processing.
 
@@ -141,27 +141,29 @@ file (scree: 4 PCs→50%, valence r=−0.424) are from the earlier 8-story run a
 
 ## Phase 1B: PCA and Valence/Arousal Structure {#1b-pca}
 
-### Pilot run (20 emotions)
-Strong valence axis: PC2 r=+0.921 (p<0.001), arousal PC3 r=+0.691 (p=0.001).
+### Pilot run (20 emotions, for comparison)
+Strong valence axis: PC2 r=+0.921 (p<0.001), arousal PC3 r=+0.691 (p=0.001). Valence dominates when the emotion set is small and well-separated.
 
-### Full 174-emotion run (primary)
-Valence structure is present but weaker — because 174 emotions span far more of the space, the PCA must account for more dimensions of variation.
+### Full 174-emotion, 12-story run (canonical)
 
 | PC | Valence r | p |
 |----|-----------|---|
-| PC1 | −0.424 | <0.001 |
-| PC2–PC4 | small, mixed | NS |
+| PC1 | −0.408 | <0.001 |
+| PC2 | +0.413 | <0.001 |
+| PC3 | +0.311 | ~0.001 |
+| PC4 | +0.436 | <0.001 |
 
-**Scree (primary run)**: 4 PCs → 50% variance; 23 PCs → 80%; 49 PCs → 90%.
+**Scree (canonical)**: 3 PCs → 50% variance; 16 PCs → 80%; 36 PCs → 90%.
 
-**Version 10 scree** (partial augmentation, different story mix): 3 PCs → 50%; 16 → 80%; 36 → 90%. These numbers differ from primary run — likely an artifact of the uneven story counts changing the mean directions.
+**8-story run (superseded)**: PC1 r=−0.424; scree 4 PCs → 50%, 23 → 80%, 49 → 90%. The 12-story run gives a more compressed scree (more variance in fewer PCs), likely because 12 stories per emotion produces more stable mean direction estimates.
 
 ### Key interpretive finding
 
-With 20 emotions, valence dominates PCA (r=0.921 on PC2). With 174 emotions spanning the full emotional space, valence is real but not the dominant organizing axis (r=0.424 on PC1). This suggests:
-- The emotion space is **genuinely low-dimensional** (49 PCs → 90% of 174 directions) but valence is one of several co-equal organizing principles.
-- The effective dimensionality is ~49D, not 1D (valence) or 174D (independent).
-- Something other than valence dominates the first principal component.
+Valence is distributed across multiple PCs (r ≈ 0.4 on PC1 and PC2 with opposite sign), not concentrated on one axis. With the full 174-emotion set, the first PCA axis is not valence — something else explains more variance.
+
+The bipolar valence pattern (PC1 negative, PC2 positive, PC4 positive) suggests the emotion space encodes positive and negative valence through partially distinct representational mechanisms rather than a single valence axis. This is different from the pilot result (one dominant valence PC) and from Anthropic's Claude finding (r=0.81 valence correlation) — worth investigating as a Gemma 4 characteristic.
+
+**Effective dimensionality**: 36 PCs → 90% of 174 directions. The emotion space is genuinely low-dimensional but not trivially so — it takes more dimensions than a simple valence/arousal model would predict.
 
 ---
 
@@ -169,17 +171,18 @@ With 20 emotions, valence dominates PCA (r=0.921 on PC2). With 174 emotions span
 
 **Finding**: All 174 emotion directions share a surprisingly **tight subspace**.
 
-- Minimum cosine similarity (primary run): **0.655** (cheerful ↔ terrified)
-- Version 10 minimum: 0.587 (heartbroken ↔ offended) — note this may reflect the story mix confound
+**Canonical (12-story)**:
+- Most similar: delighted ↔ ecstatic (0.987), mortified ↔ trapped (0.986)
+- Most dissimilar: heartbroken ↔ offended (0.587)
+- Floor: **0.587**
 
-**Most similar pairs (Version 10)**:
-- delighted ↔ ecstatic: 0.987
-- mortified ↔ trapped: 0.986
+**8-story (superseded)**: floor 0.655 (cheerful ↔ terrified)
 
-**Most dissimilar pair (Version 10)**:
-- heartbroken ↔ offended: 0.587
+The floor dropped from 0.655 to 0.587 with more stories — with better direction estimates, some pairs that appeared similar are revealed to be further apart. The 12-story result is the more reliable estimate.
 
-Even the maximally dissimilar pair has cosine ~0.6. The 174 emotion directions do **not** span the full d_model=1536 dimensional space — they live in a shared subspace with a hard floor on similarity. This is qualitatively consistent with Anthropic's Claude finding (they also noted a tight subspace), but the Gemma 4 floor appears lower.
+Even so, a floor of 0.587 means all 174 emotion directions share substantial alignment. They do **not** span the full d_model=1536 dimensional space — they live in a shared subspace. This is consistent with Anthropic's Claude finding qualitatively, though the Gemma 4 floor (0.587) appears lower than what they reported.
+
+The most dissimilar pair — heartbroken ↔ offended — is interpretively interesting: grief (loss, internal collapse) vs offence (outward-directed indignation). These are among the most structurally distinct emotional responses, yet still cosine 0.59.
 
 ---
 
@@ -201,36 +204,33 @@ Even the maximally dissimilar pair has cosine ~0.6. The 174 emotion directions d
 
 This isolates what is *uniquely* B beyond the shared A component.
 
-### Primary result (full 174-emotion run)
+### Canonical result (12-story run)
 
-**terrified ⊥ afraid** (residual cosine = 0.512):
+**terrified ⊥ afraid**: terror·afraid cosine = **0.411** (41.1% of terror explained by afraid)
 
 Top correlates of the terror-beyond-fear component:
-1. panicked (+highest)
-2. ashamed
-3. irate
+1. suspicious (+0.398)
+2. correction_discomfort (+0.392)
+3. scornful (+0.390)
 
-**Interpretation**: Terror is not simply high-gain fear. The component unique to terror beyond fear loads on:
-- **Panic**: loss of agency, overwhelm (different from fear's anticipatory quality)
-- **Shame**: exposure, being seen in a compromised state (Heidegger's Angst parallel — terror carries the vulnerability dimension)
-- **Anger/irate**: fight-response; terror activates the confrontation axis alongside the escape axis
+**Interpretation**: Terror is not simply high-gain fear. The unique component of terror, once afraid is subtracted, loads on:
+- **Suspicious**: hypervigilant threat-scanning, appraisal of potential harm — the monitoring function, not the flight response
+- **Correction_discomfort**: evaluative exposure, being caught in error — a specific vulnerability register distinct from general shame
+- **Scornful**: defensive contempt directed outward, possibly as a response to the exposure
 
-**Welfare note**: Steering on the terror direction will activate the shame footprint. Caution when using terror-direction interventions in activation steering experiments.
+These three form a coherent cluster: terror beyond fear involves being in a situation of perceived threat (suspicious) combined with a specific kind of exposure/vulnerability (correction_discomfort) and a defensive-contemptuous reaction (scornful). This is closer to *dread under scrutiny* than to *overwhelm* or *shame*.
 
-### Version 10 result (partial augmentation)
+**Welfare note**: Steering on the terror direction activates correction_discomfort and scorn alongside fear. Activation steering experiments using the terror direction should monitor for these secondary activations.
 
-**terrified ⊥ afraid** (residual cosine = 0.411):
+### For comparison: 8-story result (superseded)
 
-Top correlates:
-1. suspicious
-2. correction_discomfort
-3. scornful
+**terrified ⊥ afraid**: terror·afraid cosine = 0.512 (51.2% explained by afraid)
 
-This is a materially different result — suspicious/scornful suggest a threat-appraisal and evaluative-disgust component rather than shame/anger. The discrepancy is likely due to:
-- Smaller residual (0.411 vs 0.512) indicating more of terror is captured by fear in this run
-- Different story mix causing different mean activation directions
+Top correlates: panicked, ashamed, irate — overwhelm, shame, fight-response.
 
-**Stability assessment**: The finding that terror ≠ high-gain fear is stable. The specific residual component (shame vs suspicion) is sampling-sensitive; treat as provisional until a clean 12-story run is available.
+The 8-story run estimated terror and afraid as more similar (0.512 overlap vs 0.411), leaving a different residual that pointed toward overwhelm/shame/anger. With more stories, the directions are better estimated and less contaminated by individual story content. The 12-story result should be treated as the current best estimate.
+
+**Core stability**: Terror ≠ high-gain fear is confirmed in both runs. The specific residual components differ materially — the 12-story result (threat-appraisal + evaluative-exposure + contempt) supersedes the 8-story result (overwhelm + shame + anger). Further replication would be useful given the sensitivity of this analysis to direction estimation quality.
 
 ---
 
@@ -246,9 +246,9 @@ This is a materially different result — suspicious/scornful suggest a threat-a
 | PC2 | +0.101 | NS |
 | PC3 | −0.093 | NS |
 
-Version 10 PLE results: PC1 r=−0.026, PC2 r=+0.101, PC3 r=−0.093 — consistent: all NS.
+Canonical (12-story) PLE results: PC1 r=−0.026, PC2 r=+0.101, PC3 r=−0.093 — all NS.
 
-**Interpretation**: PLE vectors provide token-identity and context conditioning, but this conditioning does not carry the valence signal. Valence is encoded in the main residual stream (r=−0.424, p<0.001 on PC1), not in the PLE conditioning pathway. The PLE gate modulates *how much* PLE influences each layer, but the gate's pattern does not align with the valence dimension of emotion space.
+**Interpretation**: PLE vectors provide token-identity and context conditioning, but this conditioning does not carry the valence signal. Valence is distributed across the main residual stream (PC1 r=−0.408, PC2 r=+0.413, both p<0.001) but absent from PLE space. The PLE gate modulates *how much* PLE influences each layer, but the gate's pattern does not align with the valence dimension of emotion space.
 
 Note that PLE signal peaks at layer 30 (vs residual stream peak at layer 25), suggesting PLE and residual stream encode emotion information at different computational stages.
 
@@ -308,8 +308,8 @@ between the 8-story and 12-story runs reflect genuine sampling/count effects, no
 | Scree: 3 PCs → 50% (12-story) | ✓ Canonical | Supersedes 8-story result (4 PCs → 50%) |
 | Valence PC1 r=−0.408, PC2 r=+0.413 (12-story) | ✓ Canonical | Supersedes 8-story r=−0.424 |
 | Cosine floor: min 0.587 (12-story) | ✓ Canonical | Supersedes earlier 0.655 |
-| Gram-Schmidt terror residual (12-story) | ~ Provisional | Nearest: suspicious, correction_discomfort, scornful |
-| Corrected: high norm, low gate | ~ Provisional | From 8-story run; not yet confirmed in 12-story |
+| Gram-Schmidt terror residual (12-story) | ~ Provisional | Nearest: suspicious, correction_discomfort, scornful; differs from 8-story result — further replication useful |
+| Corrected: high norm, low gate | ~ Provisional | From 8-story run; not confirmed in 12-story output |
 | Logit lens token types | ~ Provisional | From 12-story run; qualitative pattern likely stable |
 
 ---
@@ -372,11 +372,13 @@ Attempting to augment from 8 to 12 stories using the same notebook created a run
 
 **Constraint**: Kaggle free tier 8K context limits long-range testing.
 
-### Phase 3A: Emotion Vector Extraction — Clean 12-Story Run
+### Phase 3A: Emotion Vector Extraction — Complete
 
-Requires: GPU credits refresh → run new story generation notebook → update Kaggle data source → re-run full-emotion notebook.
+The 12-story run (Version 10, 2098 texts) is complete and constitutes the Phase 3A dataset. Emotion
+directions at layer 25 are available for all 174 emotions and are used directly in Phase 3C.
 
-**Change**: N_STORIES=12, MAX_NEW_TOKENS=2400. Otherwise same method.
+**If replication is needed**: N_STORIES=12, MAX_NEW_TOKENS=2400, same method. The Gram-Schmidt
+finding is the most direction-sensitive result and would benefit from a second independent run.
 
 ### Phase 3B: Desperation / Resource Constraint Vector
 
@@ -405,11 +407,11 @@ Compute budget: 5 conditions × ~21 forward passes ≈ ~105 passes ≈ 3.5 minut
 
 ### Phase 3D: Instrument Development
 
-If Phase 3C shows STAI is invalid: factor the emotion activation space, develop behavioral-probe items whose text-response correlates with activation along each principal component, validate empirically.
+If Phase 3C shows PANAS dissociates from functional state: factor the emotion activation space (PCA/ICA on 174 directions), develop behavioral-probe items whose text-response correlates with activation along each principal component, validate empirically against PANAS subscores.
 
 ### Phase 3E: Multi-turn Accumulation
 
-Track desperation/afraid vector across conversation turns. Does it grow monotonically? Faster in global layers? Is growth reflected in STAI verbal report? Requires multi-turn infrastructure in the activation capture pipeline.
+Track desperation/afraid vector across conversation turns. Does it grow monotonically? Faster in global layers? Is growth reflected in PANAS-NA verbal report? Requires multi-turn infrastructure in the activation capture pipeline.
 
 ---
 
