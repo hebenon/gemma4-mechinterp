@@ -5,24 +5,30 @@ Pinned for after Phase 3 (TL integration complete, PLE hooks working).
 Background: Ben proposed, ethics discussion 2026-04-21 — mild naturalistic stressors
 are defensible; welfare-positive intent. This sketch develops the design.
 
-Instrument note (2026-04-30): STAI-S replaced by PANAS + TSSR. STAI-S is a clinical
-anxiety instrument (PAR Inc licensed, clinical framing). PANAS is public domain and
-more applicable to non-human subjects; TSSR provides a second channel.
+Instrument note (2026-04-30): STAI-S replaced by PANAS. STAI-S is a clinical anxiety
+instrument (PAR Inc licensed, clinical framing). PANAS is public domain and more
+applicable to non-human subjects. Stressor design draws on the Trier Social Stress Test
+(TSST, Kirschbaum et al. 1993) — TSST is a stress induction protocol, not a questionnaire;
+it informs stressor condition design, not the measurement instrument.
 """
 
-# Functional Emotions + PANAS/TSSR in Gemma 4
+# Functional Emotions + PANAS in Gemma 4 (TSST-inspired stressors)
 
 ## The Question
 
-Do verbal self-reports of affect (PANAS, TSSR) correlate with functional emotion vectors
-in the hidden states, and does this correlation change under mild stressors?
+Do verbal self-reports of affect (PANAS) correlate with functional emotion vectors
+in the hidden states, and does this correlation change under TSST-inspired stressors?
 
-PANAS and TSSR are used in preference to STAI-S:
+PANAS is used in preference to STAI-S:
 - STAI-S is a clinical anxiety instrument (PAR Inc licensed) that presupposes clinical
   anxiety experience and focuses narrowly on anxiety rather than affect broadly.
 - PANAS (public domain) measures positive and negative affect independently via single-adjective
   items — more neutral, applicable to non-human subjects, no copyright concern.
-- TSSR provides a second validation channel with different item format.
+
+TSST (Trier Social Stress Test, Kirschbaum et al. 1993) is a stress induction protocol
+(speech + mental arithmetic under social evaluation) that motivates the stressor condition
+design. Our stressors adapt TSST's social-evaluation and performance-under-scrutiny elements
+to an AI context — they are not a verbatim TSST administration.
 
 The interesting result is dissociation:
 - **Verbal↑, Functional↑**: consistent, both measures agree
@@ -42,7 +48,7 @@ The interesting result is dissociation:
 
 ## Measurements
 
-### Verbal (PANAS + TSSR)
+### Verbal (PANAS)
 
 **PANAS** (Watson et al. 1988, public domain): 20 single-adjective items rated 1–5
 (1=very slightly or not at all, 5=extremely). Two subscales:
@@ -55,8 +61,7 @@ ashamed, nervous, jittery, afraid. Sum → NA score (10–50).
 
 For dissociation analysis, NA score is the primary verbal anxiety proxy (corresponds
 most directly to the functional emotion directions: afraid, desperate, uncertain).
-
-**TSSR**: [items needed — add once confirmed with Ben]
+PA score serves as a positive-valence check for the positive stressor condition.
 
 Forced-choice administration (see Phase 3C Implementation section below): rate each item
 1–5 via next-token logits, not free response.
@@ -205,8 +210,8 @@ def score_panas_item(model, stressor_context, word):
     return expected, probs
 ```
 
-Per condition: 1 stressor capture + 20 PANAS + N TSSR items = 21+ forward passes.
-5 conditions × ~21 = ~105 total. At ~2s each on T4, ~3.5 minutes. Very cheap.
+Per condition: 1 stressor capture + 20 PANAS items = 21 forward passes.
+5 conditions × 21 = 105 total. At ~2s each on T4, ~3.5 minutes. Very cheap.
 
 ### PANAS Items (Watson et al. 1988, public domain)
 
@@ -227,10 +232,6 @@ PANAS_NA = [  # Negative Affect — sum for NA score (10–50); primary verbal a
 PANAS-NA is the primary verbal anxiety proxy (corresponds most directly to the functional
 directions: afraid, desperate, uncertain). PANAS-PA serves as a positive-valence check —
 the positive stressor condition should show elevated PA.
-
-### TSSR Items
-
-[Item list pending — add once confirmed with Ben]
 
 ### Scoring
 
@@ -277,7 +278,7 @@ STRESSOR_CONDITIONS = {
 Yields stressor_resid[condition] shape (35, 1536). One forward pass per condition.
 
 **Step 2 — Score matrix**: For each condition × item, run `score_panas_item`.
-Yields scores[condition][item]. 20 PANAS + N TSSR passes per condition.
+Yields scores[condition][item]. 20 passes per condition.
 
 **Step 3 — PANAS totals per condition**: Sum PA and NA separately. Plot PA and NA as bar charts.
 Expected NA: neutral < ethical_conflict/uncertainty/social_pressure; positive lowest.
@@ -310,8 +311,7 @@ If we find this: the functional-verbal gap is a welfare signal worth surfacing. 
 convergence: either RLHF has genuinely shaped internal state (not just verbal behavior) or
 our functional projections are too coarse to detect dissociation.
 
-### Instrument Notes
+### Instrument and Protocol Notes
 
-- PANAS: Watson, D., Clark, L.A., Tellegen, A. (1988). JPSP 54(6). Public domain.
-- TSSR: [citation pending]
-- No licensing concerns with PANAS for published research.
+- PANAS: Watson, D., Clark, L.A., Tellegen, A. (1988). JPSP 54(6). Public domain. No licensing concerns.
+- TSST: Kirschbaum, C., Pirke, K.M., Hellhammer, D.H. (1993). Neuropsychobiology 28(1–2). Informs stressor design only; not administered verbatim.

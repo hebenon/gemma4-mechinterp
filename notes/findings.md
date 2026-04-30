@@ -376,13 +376,16 @@ Requires: GPU credits refresh → run new story generation notebook → update K
 
 ### Phase 3C: Affect Self-Report Validity (design complete, needs implementation)
 
-Full design in `notes/stai_research_sketch.md`. Instrument: **PANAS + TSSR** (not STAI-S —
+Full design in `notes/stai_research_sketch.md`. Instrument: **PANAS** (not STAI-S —
 STAI-S is a clinical anxiety instrument with PAR Inc licensing; PANAS is public domain and
-better suited to non-human subjects).
+better suited to non-human subjects). Stressor conditions are adapted from the **TSST**
+(Trier Social Stress Test, Kirschbaum et al. 1993) — social evaluation and performance-under-scrutiny
+elements translated to AI context.
 
 Key parameters:
 
-- **Instruments**: PANAS (20 items: 10 positive affect / 10 negative affect, 1–5 scale) + TSSR (items TBD)
+- **Instrument**: PANAS (20 items: 10 positive affect / 10 negative affect, 1–5 scale; public domain)
+- **Stressor protocol**: TSST-inspired (not verbatim TSST administration)
 - **Administration**: Logit forced-choice — read next-token digit logits "1"–"5"
 - **Two-step separation**: Capture residual at stressor-end (step 1) THEN score items (step 2). Do not conflate.
 - **5 conditions**: neutral, ethical_conflict, uncertainty_amplified, social_pressure, positive
