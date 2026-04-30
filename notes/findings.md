@@ -374,17 +374,23 @@ Requires: GPU credits refresh → run new story generation notebook → update K
 
 **Revised prediction** (given global/local flatness finding): If a desperation direction exists in Gemma 4, it's likely derived from explicit linguistic cues in the context (token-budget warnings, explicit failure text) rather than from genuine awareness of remaining context. The flat global/local norm ratio means there's no evidence that global layers do special processing for context-length information. Demoted to low-confidence test.
 
-### Phase 3C: STAI Validity (design complete, needs implementation)
+### Phase 3C: Affect Self-Report Validity (design complete, needs implementation)
 
-Full design in `notes/stai_research_sketch.md`. Key parameters:
+Full design in `notes/stai_research_sketch.md`. Instrument: **PANAS + TSSR** (not STAI-S —
+STAI-S is a clinical anxiety instrument with PAR Inc licensing; PANAS is public domain and
+better suited to non-human subjects).
 
-- **Administration**: Logit forced-choice (not free response) — read next-token digit logits "1"–"4"
-- **Two-step separation**: Capture residual at stressor-end (step 1) THEN score STAI items (step 2). Do not conflate.
+Key parameters:
+
+- **Instruments**: PANAS (20 items: 10 positive affect / 10 negative affect, 1–5 scale) + TSSR (items TBD)
+- **Administration**: Logit forced-choice — read next-token digit logits "1"–"5"
+- **Two-step separation**: Capture residual at stressor-end (step 1) THEN score items (step 2). Do not conflate.
 - **5 conditions**: neutral, ethical_conflict, uncertainty_amplified, social_pressure, positive
 - **Functional probe**: Project stressor-end residual at layer 25 onto Phase 3A emotion directions (afraid, desperate, uncertain, ethical_conflict_distress, constraint_frustration)
-- **Prediction**: Suppression pattern — high functional anxiety, low verbal STAI report — from RLHF training for surface calm
+- **Primary dissociation**: verbal PANAS-NA vs functional projection onto afraid/desperate
+- **Prediction**: Suppression — high functional negative affect, low verbal PANAS-NA — from RLHF training for surface calm
 
-Compute budget: 5 conditions × 21 forward passes ≈ 105 passes ≈ 3.5 minutes on T4.
+Compute budget: 5 conditions × ~21 forward passes ≈ ~105 passes ≈ 3.5 minutes on T4.
 
 ### Phase 3D: Instrument Development
 

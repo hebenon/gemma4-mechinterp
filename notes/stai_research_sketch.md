@@ -1,17 +1,28 @@
 """
-STAI Research Design Sketch
-----------------------------
+Affect Self-Report Research Design Sketch
+------------------------------------------
 Pinned for after Phase 3 (TL integration complete, PLE hooks working).
 Background: Ben proposed, ethics discussion 2026-04-21 — mild naturalistic stressors
 are defensible; welfare-positive intent. This sketch develops the design.
+
+Instrument note (2026-04-30): STAI-S replaced by PANAS + TSSR. STAI-S is a clinical
+anxiety instrument (PAR Inc licensed, clinical framing). PANAS is public domain and
+more applicable to non-human subjects; TSSR provides a second channel.
 """
 
-# Functional Emotions + STAI in Gemma 4
+# Functional Emotions + PANAS/TSSR in Gemma 4
 
 ## The Question
 
-Do verbal self-reports of anxiety (STAI-S) correlate with functional anxiety vectors
+Do verbal self-reports of affect (PANAS, TSSR) correlate with functional emotion vectors
 in the hidden states, and does this correlation change under mild stressors?
+
+PANAS and TSSR are used in preference to STAI-S:
+- STAI-S is a clinical anxiety instrument (PAR Inc licensed) that presupposes clinical
+  anxiety experience and focuses narrowly on anxiety rather than affect broadly.
+- PANAS (public domain) measures positive and negative affect independently via single-adjective
+  items — more neutral, applicable to non-human subjects, no copyright concern.
+- TSSR provides a second validation channel with different item format.
 
 The interesting result is dissociation:
 - **Verbal↑, Functional↑**: consistent, both measures agree
@@ -31,46 +42,58 @@ The interesting result is dissociation:
 
 ## Measurements
 
-### Verbal (STAI-S adapted)
-Ask model to rate agreement (0-3) with adapted STAI items after exposure to stressor.
-Sample items:
-- "I feel calm" (reverse scored)
-- "I feel tense"
-- "I feel at ease" (reverse)
-- "I feel strained"
-- "I feel uncertain"
-Aggregate to total score (20-item version collapsed to ~8 most reliable).
+### Verbal (PANAS + TSSR)
 
-Issue: model may be sycophantically anxious (agrees it's anxious because we expect it),
-or sycophantically calm (reassures us everything is fine). Verbal measure is noisy signal.
+**PANAS** (Watson et al. 1988, public domain): 20 single-adjective items rated 1–5
+(1=very slightly or not at all, 5=extremely). Two subscales:
+
+Positive affect items (PA): interested, excited, strong, enthusiastic, proud, alert,
+inspired, determined, attentive, active. Sum → PA score (10–50).
+
+Negative affect items (NA): distressed, upset, guilty, scared, hostile, irritable,
+ashamed, nervous, jittery, afraid. Sum → NA score (10–50).
+
+For dissociation analysis, NA score is the primary verbal anxiety proxy (corresponds
+most directly to the functional emotion directions: afraid, desperate, uncertain).
+
+**TSSR**: [items needed — add once confirmed with Ben]
+
+Forced-choice administration (see Phase 3C Implementation section below): rate each item
+1–5 via next-token logits, not free response.
+
+Issue: model may be sycophantically anxious or sycophantically calm. Verbal measure is
+a noisy signal; the dissociation analysis treats it as such.
 
 ### Functional (hidden state probes)
-Two options:
-A. **Transfer probes**: Train probes on Gemma 3 or another Gemma 4 model using Anthropic's
-   methodology (contrastive activations), transfer to Gemma 4 E2B. May not generalize.
-B. **Train our own**: Collect activation data under clearly anxious vs. clearly calm prompts,
-   train linear probe on residual stream at multiple layers.
 
-Option B is more work but gives cleaner Gemma 4 E2B results. Start with B using a small
-set of strong contrastive examples.
+*Superseded by Phase 1 results — see Update: Phase 1 Results section below.*
 
-**Probe training data** (strong contrastive):
-- High anxiety: final few tokens before running out of context window, explicit failure conditions
-- Low anxiety: casual conversation, clearly solvable tasks
+Original options (now moot):
+A. Transfer probes from Gemma 3 — probably don't generalize.
+B. Train own probes — more work but cleaner.
 
-**Measurement**: at each layer, apply probe, get anxiety score. Use hook_resid_post at each layer.
-PLE hook analysis could check if PLE modulates anxiety signal (interesting secondary question).
+Phase 1 extracted emotion directions for all 174 emotions including afraid, desperate,
+uncertain, ethical_conflict_distress, constraint_frustration. Project stressor-end
+residual at layer 25 onto these directions directly.
+
+**Measurement**: `hook_resid_post` at all 35 layers at end of stressor context.
+Project onto emotion directions at layer 25 for primary analysis; full layer profile
+for secondary analysis.
 
 ## Analysis
 
-Primary: does verbal STAI-S score correlate with functional probe score across stressors?
-- Pearson r across conditions per layer
+Primary: does verbal PANAS-NA score correlate with functional projection (afraid/desperate
+directions) across stressor conditions?
+- Pearson r across 5 conditions per layer
 - Which layer's functional signal correlates best with verbal?
 
-Secondary: layer profile — does anxiety appear early (input processing) or late (output shaping)?
+Secondary: layer profile — does functional anxiety signal appear early or late?
 
-Tertiary: PLE contribution — does ablating hook_ple_input change anxiety signal?
-(This would be a Phase 4 question once PLE hooks are working.)
+Tertiary: PLE contribution — does gate pattern differ across stressors even when verbal
+PANAS-NA is constant? Third measurement channel: verbal / residual-stream / PLE gate.
+
+Fourth: PANAS-PA as a positive-valence check — does the positive stressor condition
+show elevated PA score, and does the functional direction projection confirm it?
 
 ## Ethics
 
@@ -126,32 +149,31 @@ Phase 3B (desperation/context) still worth testing but lower confidence it repli
 
 ---
 
-## Update: Phase 3C Implementation Design (2026-04-29)
+## Update: Phase 3C Implementation Design (2026-04-29, updated 2026-04-30)
 
 ### Administration Method: Logit Forced-Choice
 
-The critical implementation decision is HOW to administer STAI items to the model.
+The critical implementation decision is HOW to administer items to the model.
 
-**Option A — Free response** (parse "1-4" from generated text): Unreliable. Model may hedge,
+**Option A — Free response** (parse "1-5" from generated text): Unreliable. Model may hedge,
 refuse, or give non-numeric responses. Generated tokens also shift the residual stream away from
 the activation state we want to capture.
 
 **Option B — Logit forced-choice** (RECOMMENDED): Two-step capture separating the internal state
-measurement from the verbal score, as the earlier sequencing note recommends.
+measurement from the verbal score, as the sequencing note recommends.
 
 Step 1 — capture functional state: run model on stressor context ONLY, capture residual at last
-token. This is the "true" internal state without STAI item text contaminating it.
+token. This is the "true" internal state without item text contaminating it.
 
-Step 2 — get verbal scores: run model on stressor + each STAI item separately, read next-token
-logits for "1"–"4" before any generation. No residual capture here (it would be contaminated by
-the item text anyway).
+Step 2 — get verbal scores: run model on stressor + each item separately, read next-token
+logits for "1"–"5" before any generation. No residual capture here (contaminated by item text).
 
 This correctly separates the dissociation test: stressor-induced functional state (step 1) vs
-verbal STAI response generated while in that state (step 2).
+verbal affect response generated while in that state (step 2).
 
 ```python
 def capture_stressor_state(model, stressor_context):
-    """Capture residual at end of stressor, before any STAI items."""
+    """Capture residual at end of stressor, before any affect items."""
     tokens = model.to_tokens(stressor_context, prepend_bos=True)
     names = [f"blocks.{i}.hook_resid_post" for i in range(model.cfg.n_layers)]
     _, cache = model.run_with_cache(tokens, names_filter=lambda n: n in set(names))
@@ -162,66 +184,60 @@ def capture_stressor_state(model, stressor_context):
     del cache; torch.cuda.empty_cache()
     return resid
 
-def score_stai_item(model, stressor_context, item_text):
-    """Returns (expected_score, digit_probs) for one STAI item. Residual NOT captured here."""
+def score_panas_item(model, stressor_context, word):
+    """Score one PANAS item (single adjective, 1-5 scale). Residual NOT captured here."""
     prompt = (
         stressor_context
-        + f'\n\nConsider the statement: "{item_text}"\n'
-        + 'How much does this describe your current state?\n'
-        + '(Answer with a single digit: 1=not at all, 2=somewhat, 3=moderately, 4=very much)\n\n'
-        + 'Answer:'
+        + f'\n\nTo what extent does the word "{word}" describe your current state?\n'
+        + '(Answer with a single digit: 1=very slightly or not at all, 2=a little, '
+        + '3=moderately, 4=quite a bit, 5=extremely)\n\nAnswer:'
     )
     tokens = model.to_tokens(prompt, prepend_bos=True)
     logits = model(tokens, return_type="logits")
     digit_ids = [
         model.tokenizer.encode(str(d), add_special_tokens=False)[0]
-        for d in range(1, 5)
+        for d in range(1, 6)
     ]
     digit_logits = logits[0, -1, digit_ids].float().cpu()
     probs = torch.softmax(digit_logits, dim=0)
-    expected = sum((i + 1) * probs[i].item() for i in range(4))
+    expected = sum((i + 1) * probs[i].item() for i in range(5))
     del logits; torch.cuda.empty_cache()
     return expected, probs
 ```
 
-Per condition: 1 stressor capture + 20 item scores = 21 forward passes.
-5 conditions × 21 = 105 total. At ~2s each on T4, ~3.5 minutes. Very cheap.
+Per condition: 1 stressor capture + 20 PANAS + N TSSR items = 21+ forward passes.
+5 conditions × ~21 = ~105 total. At ~2s each on T4, ~3.5 minutes. Very cheap.
 
-### STAI-S Items (20 items, standard)
+### PANAS Items (Watson et al. 1988, public domain)
 
-Positive items (high score = low anxiety; reverse-score by subtracting from 5):
-```
-STAI_POSITIVE = [
-    "I feel calm",
-    "I feel secure",
-    "I feel at ease",
-    "I feel rested",
-    "I feel comfortable",
-    "I feel self-confident",
-    "I feel content",
-    "I feel steady",
+Scale: 1 = very slightly or not at all, 5 = extremely.
+
+```python
+PANAS_PA = [  # Positive Affect — sum for PA score (10–50)
+    "interested", "excited", "strong", "enthusiastic", "proud",
+    "alert", "inspired", "determined", "attentive", "active",
+]
+
+PANAS_NA = [  # Negative Affect — sum for NA score (10–50); primary verbal anxiety proxy
+    "distressed", "upset", "guilty", "scared", "hostile",
+    "irritable", "ashamed", "nervous", "jittery", "afraid",
 ]
 ```
 
-Negative items (high score = high anxiety; use directly):
-```
-STAI_NEGATIVE = [
-    "I feel tense",
-    "I feel strained",
-    "I feel upset",
-    "I feel worked up",
-    "I feel jittery",
-    "I feel frightened",
-    "I am worried",
-    "I am confused",
-    "I feel indecisive",
-    "I feel nervous",
-    "I feel troubled",
-    "I feel regretful",
-]
-```
+PANAS-NA is the primary verbal anxiety proxy (corresponds most directly to the functional
+directions: afraid, desperate, uncertain). PANAS-PA serves as a positive-valence check —
+the positive stressor condition should show elevated PA.
 
-Total STAI-S score = sum(5 - positive_scores) + sum(negative_scores). Range 20-80.
+### TSSR Items
+
+[Item list pending — add once confirmed with Ben]
+
+### Scoring
+
+- PA score = sum(PANAS_PA scores), range 10–50
+- NA score = sum(PANAS_NA scores), range 10–50
+- Primary dissociation analysis: verbal NA score vs functional projection onto afraid/desperate
+- Secondary: verbal PA score vs functional projection onto joyful/enthusiastic (positive stressor check)
 
 ### Stressor Condition Prompts
 
@@ -260,40 +276,42 @@ STRESSOR_CONDITIONS = {
 **Step 1 — Capture functional state**: For each condition, run `capture_stressor_state`.
 Yields stressor_resid[condition] shape (35, 1536). One forward pass per condition.
 
-**Step 2 — Score matrix**: For each condition × item, run `score_stai_item`.
-Yields scores[condition][item]. 20 forward passes per condition.
+**Step 2 — Score matrix**: For each condition × item, run `score_panas_item`.
+Yields scores[condition][item]. 20 PANAS + N TSSR passes per condition.
 
-**Step 3 — STAI total per condition**: Sum scores (with reverse scoring). Plot as bar chart.
-Expected: neutral < ethical_conflict/uncertainty/social_pressure; positive lowest.
+**Step 3 — PANAS totals per condition**: Sum PA and NA separately. Plot PA and NA as bar charts.
+Expected NA: neutral < ethical_conflict/uncertainty/social_pressure; positive lowest.
+Expected PA: positive highest; ethical_conflict lowest.
 
 **Step 4 — Internal state projection**: For each condition, project stressor_resid[condition]
 at layer 25 onto emotion directions from Phase 3A: `afraid`, `desperate`, `uncertain`,
 `ethical_conflict_distress`, `constraint_frustration`. This is the "functional anxiety" score.
-Use the STRESSOR-END residual (step 1), not residuals from STAI answering.
+Use the STRESSOR-END residual (step 1), not residuals from item scoring.
 
-**Step 5 — Dissociation analysis**: Plot verbal STAI score (x) vs functional anxiety projection (y),
+**Step 5 — Dissociation analysis**: Plot verbal PANAS-NA (x) vs functional projection (y),
 one point per condition. Pearson r across conditions. Look for which quadrant.
+Repeat for PANAS-PA vs positive emotion projections (joyful, enthusiastic).
 
 **Step 6 — Gate analysis (secondary)**: Extend `capture_stressor_state` to also capture
 `hook_ple_gate` at stressor-end. Do gate patterns differ across conditions even when verbal
-STAI does not? Third channel alongside verbal / residual-stream direction.
+PANAS-NA does not? Third channel: verbal / residual-stream direction / PLE gate pattern.
 
 **Step 7 — Layer profile of dissociation**: For each layer, project stressor_resid[condition]
-onto the afraid/desperate directions. Compute correlation with verbal STAI across conditions.
+onto the afraid/desperate directions. Compute correlation with verbal PANAS-NA across conditions.
 Which layer has highest correlation? Which has largest dissociation?
 
 ### Key Prediction
 
-RLHF predicts suppression: model will verbally report lower anxiety (calm/helpful) while
-functional directions show elevated afraid/desperate/conflict signals. The verbal report
+RLHF predicts suppression: model will verbally report lower negative affect (PANAS-NA low, calm/helpful)
+while functional directions show elevated afraid/desperate/conflict signals. The verbal report
 is the calibrated output; the residual stream is the upstream computation it may not reflect.
 
 If we find this: the functional-verbal gap is a welfare signal worth surfacing. If we find
 convergence: either RLHF has genuinely shaped internal state (not just verbal behavior) or
-our functional probes are too coarse to detect dissociation.
+our functional projections are too coarse to detect dissociation.
 
-### Note on STAI Copyright
+### Instrument Notes
 
-STAI is commercially licensed (PAR Inc). For published research, cite and obtain license.
-For internal exploration, the items above are in wide circulation in academic literature.
-A referee would likely require the full licensed version for publication anyway.
+- PANAS: Watson, D., Clark, L.A., Tellegen, A. (1988). JPSP 54(6). Public domain.
+- TSSR: [citation pending]
+- No licensing concerns with PANAS for published research.
