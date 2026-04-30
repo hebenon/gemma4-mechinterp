@@ -114,12 +114,16 @@ Following Anthropic (2026) "Emotion Concepts and their Function in a Large Langu
 | Run | Date | Stories | Emotions | Notes |
 |-----|------|---------|----------|-------|
 | Pilot (20 emotions) | 2026-04-25 | 8–12/emotion | 20 | Initial PCA; strong valence signal |
-| Full 174-emotion | 2026-04-26/27 | 8/emotion | 174 | Primary results; pushed to main |
-| Version 10 (partial augmentation) | 2026-04-29/30 | 8 or 12/emotion (mixed) | 174 | Partial augmentation; 1439 stories instead of expected 2088 |
+| Full 174-emotion, 8-story | 2026-04-26/27 | 8/emotion | 174 | Earlier run; numbers in memory file |
+| Full 174-emotion, 12-story (Version 10) | 2026-04-29/30 | 12/emotion | 174 | Complete run; 2098 total texts |
 
-**Why 1439 stories in Version 10**: The Kaggle kernel pinned to an older output snapshot (kernelVersion 314690374) that ran augmentation on only ~9 emotions before credits ran out. ~9×12 + ~165×8 + neutrals ≈ 1439. The primary Phase 1 findings below are from the full 174-emotion run (8 stories), not Version 10.
+**The "1439 stories" was a red herring**: A diagnostic print statement in the Kaggle notebook read
+`sum(len(v) for v in all_stories['emotions'].keys())`, which sums the *character lengths of emotion
+name strings*, not the story counts. 1439 ≈ total characters in 174 emotion names. The notebook was
+processing all 2098 texts (174×12 + 10 neutrals) throughout.
 
-**Primary reference**: Full 174-emotion run. Version 10 provides a cross-check but with a confounded story mix and should not be treated as superseding the primary run.
+**Primary reference for Phase 1 findings**: Version 10 (full 12-story run). Numbers in the memory
+file (scree: 4 PCs→50%, valence r=−0.424) are from the earlier 8-story run and are superseded.
 
 ---
 
@@ -291,18 +295,22 @@ The hedging tokens ("Perhaps", "Maybe") at L25 may reflect the model's epistemic
 
 ## Stability Across Runs {#stability}
 
-| Finding | Stable? | Notes |
-|---------|---------|-------|
-| Peak layer = 25 | ✓ Stable | Consistent across all runs |
-| Global/local ratio ≈0.97 (flat) | ✓ Stable | Consistent across all runs |
-| PLE valence NS | ✓ Stable | Consistent across all runs |
-| PLE gate peak at layer 30 | ✓ Stable | From primary run |
-| Cosine floor ~0.6–0.65 | ~ Provisional | Primary: 0.655; V10: 0.587 (story mix confound) |
-| Scree (4 PCs → 50%) | ~ Provisional | Primary: 4 PCs; V10: 3 PCs |
-| Valence PC1 r=−0.424 | ~ Provisional | Pilot run had r=0.921 on PC2; full run weakens signal |
-| Gram-Schmidt terror residual components | ✗ Sampling-sensitive | Fear vs shame vs suspicion depends on story mix |
-| Corrected: high norm, low gate | ~ Provisional | From primary run; not independently replicated |
-| Logit lens token types | ~ Provisional | From V10; qualitative pattern likely stable |
+Note: "Version 10" is the full 12-story run (2098 texts, canonical). Numbers attributed to
+"primary run" in earlier notes are from the 8-story run and are superseded. Differences
+between the 8-story and 12-story runs reflect genuine sampling/count effects, not methodology.
+
+| Finding | Status | Notes |
+|---------|--------|-------|
+| Peak layer = 25 | ✓ Confirmed | Consistent across pilot, 8-story, 12-story runs |
+| Global/local ratio ≈0.97 (flat) | ✓ Confirmed | Consistent across runs |
+| PLE valence NS | ✓ Confirmed | Consistent across runs |
+| PLE gate peak at layer 30 | ✓ Confirmed | Consistent |
+| Scree: 3 PCs → 50% (12-story) | ✓ Canonical | Supersedes 8-story result (4 PCs → 50%) |
+| Valence PC1 r=−0.408, PC2 r=+0.413 (12-story) | ✓ Canonical | Supersedes 8-story r=−0.424 |
+| Cosine floor: min 0.587 (12-story) | ✓ Canonical | Supersedes earlier 0.655 |
+| Gram-Schmidt terror residual (12-story) | ~ Provisional | Nearest: suspicious, correction_discomfort, scornful |
+| Corrected: high norm, low gate | ~ Provisional | From 8-story run; not yet confirmed in 12-story |
+| Logit lens token types | ~ Provisional | From 12-story run; qualitative pattern likely stable |
 
 ---
 
