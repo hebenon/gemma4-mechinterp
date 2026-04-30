@@ -141,29 +141,58 @@ file (scree: 4 PCs→50%, valence r=−0.424) are from the earlier 8-story run a
 
 ## Phase 1B: PCA and Valence/Arousal Structure {#1b-pca}
 
-### Pilot run (20 emotions, for comparison)
-Strong valence axis: PC2 r=+0.921 (p<0.001), arousal PC3 r=+0.691 (p=0.001). Valence dominates when the emotion set is small and well-separated.
+*Analysis notebook*: `notebooks/gemma4-phase1-nrcvad-pca.ipynb`. Correlates all PCs against
+all three NRC-VAD dimensions (valence, arousal, dominance), not just valence.
 
-### Full 174-emotion, 12-story run (canonical)
+### Scree (12-story canonical run)
 
-| PC | Valence r | p |
-|----|-----------|---|
-| PC1 | −0.408 | <0.001 |
-| PC2 | +0.413 | <0.001 |
-| PC3 | +0.311 | ~0.001 |
-| PC4 | +0.436 | <0.001 |
+3 PCs → 52.4% variance; 10 PCs → 73.7%; 16 PCs → 80.6%; 36 PCs → 90.3%.
 
-**Scree (canonical)**: 3 PCs → 50% variance; 16 PCs → 80%; 36 PCs → 90%.
+### Per-PC correlation with NRC-VAD (top 10 PCs)
 
-**8-story run (superseded)**: PC1 r=−0.424; scree 4 PCs → 50%, 23 → 80%, 49 → 90%. The 12-story run gives a more compressed scree (more variance in fewer PCs), likely because 12 stories per emotion produces more stable mean direction estimates.
+| PC | var% | Valence r | Arousal r | Dominance r |
+|----|------|-----------|-----------|-------------|
+| 1 | 37.4 | −0.403*** | +0.206**  | −0.328***   |
+| 2 |  8.8 | +0.378*** | +0.029    | +0.305***   |
+| 3 |  6.3 | +0.232**  | −0.281*** | −0.018      |
+| 4 |  5.2 | +0.457*** | +0.134    | +0.422***   |
+| 5 |  4.0 | +0.084    | +0.088    | +0.302***   |
+| 6 |  3.3 | +0.012    | −0.475*** | −0.175*     |
+| 7 |  2.5 | +0.223**  | +0.078    | +0.114      |
+| 8 |  2.4 | −0.082    | −0.083    | −0.224**    |
+| 9 |  2.3 | +0.185*   | −0.228**  | −0.075      |
+| 10 | 1.7 | −0.116    | −0.122    | −0.098      |
 
-### Key interpretive finding
+### Cumulative R² (how much of each VAD dimension is explained by top-k PCs)
 
-Valence is distributed across multiple PCs (r ≈ 0.4 on PC1 and PC2 with opposite sign), not concentrated on one axis. With the full 174-emotion set, the first PCA axis is not valence — something else explains more variance.
+| k  | Valence R² | Arousal R² | Dominance R² |
+|----|------------|------------|--------------|
+| 1  | 0.163      | 0.042      | 0.107        |
+| 4  | 0.568      | 0.140      | 0.379        |
+| 8  | 0.632      | 0.386      | 0.563        |
+| 20 | 0.734      | 0.583      | 0.620        |
 
-The bipolar valence pattern (PC1 negative, PC2 positive, PC4 positive) suggests the emotion space encodes positive and negative valence through partially distinct representational mechanisms rather than a single valence axis. This is different from the pilot result (one dominant valence PC) and from Anthropic's Claude finding (r=0.81 valence correlation) — worth investigating as a Gemma 4 characteristic.
+### What each PC actually represents (top emotion loadings)
 
-**Effective dimensionality**: 36 PCs → 90% of 174 directions. The emotion space is genuinely low-dimensional but not trivially so — it takes more dimensions than a simple valence/arousal model would predict.
+| PC | Best VAD label | + pole | − pole |
+|----|---------------|--------|--------|
+| PC1 (37.4%) | Mixed (V, D, A) | surprised, rattled, hysterical, bored, vigilant | optimistic, grateful, cheerful, smug, melancholy |
+| PC2 (8.8%) | Valence/Dominance | self_confident, pleased, triumphant, euphoric, elated | panicked, unsettled, terrified, trapped, alert |
+| PC3 (6.3%) | Arousal (neg) | heartbroken, loving, sentimental, relaxed, safe | offended, frustrated, outraged, stubborn, furious |
+| PC4 (5.2%) | Valence/Dominance | fulfilled, enthusiastic, heartbroken, joyful, vibrant | depressed, melancholy, tormented, frightened |
+| PC6 (3.3%) | **Arousal (clearest)** | sleepy, indifferent, resigned, bored | surprised, frightened, scared, desperate, puzzled |
+
+### Key interpretive findings
+
+**PC1 is not valence.** It accounts for 37.4% of all variance — more than the next five PCs combined — and it correlates with valence, dominance, AND arousal simultaneously. The emotion loadings don't resolve to a clean psychological category: the positive end mixes high-arousal (hysterical, rattled) with low-arousal (bored, dispirited), and the negative end mixes clear positives (optimistic, grateful) with negatives (melancholy). The dominant organizing axis of Gemma 4's emotion space is an unnamed mixed construct.
+
+**Arousal has the clearest dedicated axis: PC6** (r=−0.475***, only 3.3% of variance). High-arousal emotions (frightened, scared, desperate, surprised) are at one pole; low-arousal (sleepy, indifferent, resigned, bored) at the other. Arousal is concentrated but minor.
+
+**Valence is real but distributed.** Cumulative R²=0.734 with 20 PCs makes valence the best-explained NRC-VAD dimension, but no single PC exceeds r=0.46. There is no clean "valence axis" — the valence signal is spread across PC1, PC2, PC4, and beyond. This is fundamentally different from Anthropic's Claude finding (r=0.81 on a single axis).
+
+**Pilot result (20 emotions, valence PC2 r=0.921) explained.** With 20 hand-selected emotions spanning the valence extremes, PCA is essentially forced to find a valence axis because that's what varies most across those specific 20 points. With 174 emotions including dense near-synonym clusters (ecstatic/elated/euphoric, terrified/horrified/frightened), PCA must account for within-cluster variation too, diluting the valence signal. The pilot result reflects the selection, not the model's organization.
+
+**Matched 171/174 emotions** to NRC-VAD. Missing: energized, insulted, stimulated (no exact or first-word match in NRC-VAD v2.1).
 
 ---
 
@@ -305,8 +334,10 @@ between the 8-story and 12-story runs reflect genuine sampling/count effects, no
 | Global/local ratio ≈0.97 (flat) | ✓ Confirmed | Consistent across runs |
 | PLE valence NS | ✓ Confirmed | Consistent across runs |
 | PLE gate peak at layer 30 | ✓ Confirmed | Consistent |
-| Scree: 3 PCs → 50% (12-story) | ✓ Canonical | Supersedes 8-story result (4 PCs → 50%) |
-| Valence PC1 r=−0.408, PC2 r=+0.413 (12-story) | ✓ Canonical | Supersedes 8-story r=−0.424 |
+| Scree: 3 PCs → 52.4% (12-story) | ✓ Canonical | Supersedes 8-story result (4 PCs → 50%) |
+| PC1 is a mixed construct (V+D+A), not valence | ✓ Confirmed | Per NRC-VAD correlation analysis |
+| Arousal cleanest dedicated axis: PC6 (r=−0.475) | ✓ Confirmed | Per NRC-VAD correlation analysis |
+| Valence distributed across PCs; cumulative R²=0.73 | ✓ Confirmed | No single valence axis in 174-emotion space |
 | Cosine floor: min 0.587 (12-story) | ✓ Canonical | Supersedes earlier 0.655 |
 | Gram-Schmidt terror residual (12-story) | ~ Provisional | Nearest: suspicious, correction_discomfort, scornful; differs from 8-story result — further replication useful |
 | Corrected: high norm, low gate | ~ Provisional | From 8-story run; not confirmed in 12-story output |
