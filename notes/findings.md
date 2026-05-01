@@ -411,6 +411,90 @@ The comparison between Gemma 4 and Anthropic's Claude finding (r=0.81 valence, r
 
 ---
 
+## Phase 2: Token Mean-Pooled Re-Extraction {#phase2}
+
+*Notebooks*: `notebooks/gemma4-phase2-pooled-extraction.ipynb` (activation extraction),
+`notebooks/gemma4-phase1-nrcvad-pca.ipynb` (analysis, Phase 2 pkl loaded via auto-detect).
+
+### Motivation
+
+Tim Duffy (@timfduffy) replicated emotion vector extraction on Gemma 4 E2B-IT and achieved
+valence PC1 r=0.84–0.88. Phase 1 obtained r=0.403 at layer 25. Analysis of his repo
+(`github.com/timfduffy/emotion-vectors`) identified three methodological differences:
+
+1. **Token pooling**: Tim mean-pools residual stream over tokens 50→end. Phase 1 used last-token only.
+2. **Global-mean centering**: Tim subtracts the global mean of all emotion means (not the neutral mean).
+   Neutral stories are used only for PCA denoising, not as the baseline.
+3. **Neutral scale**: 1500 neutral dialogues vs Phase 1's 10 factual paragraphs.
+
+Phase 2 implements fixes 1 and 2 (fix 3 partially addressed via 100 neutral topics). The model,
+extraction architecture, and emotion story set are unchanged.
+
+### Extraction Method Changes
+
+- **Token pooling**: `mean(hidden_states[layer+1][0, 50:, :])` across tokens 50→end of each story.
+  Short neutrals (prompt text only, ~35–40 tokens) pool from token 1+.
+- **Centering**: `direction = emotion_mean_at_layer − global_mean_of_all_emotion_means`
+- **Neutral set**: 100 diverse topics (10 original + 90 new), embedded in the Phase 2 pkl as
+  `resid_acts['__neutral__']`. The neutral expansion npz is superseded.
+- **TPU-safe**: `use_cache=False`, no `model.generate()` — just forward passes on pre-generated
+  story text loaded from `stories_flat.json`.
+
+### Results at Layer 18 (sparse sweep optimum)
+
+| | Phase 1 (last-token, L25, neutral-mean) | Phase 2 (mean-pool, L18, global-mean) |
+|---|---|---|
+| PC1 valence r | 0.403 | **0.760** |
+| PC1 arousal r | 0.206 | 0.184 |
+| Best arousal (any PC) | PC6 r=0.475 | PC3 r=0.402 |
+| Val spread across PCs | PC1+PC4 split | PC1 clean |
+| Tim's result | — | 0.84–0.88 |
+
+The 1.9× valence improvement comes from mean-pooling + layer selection, not from denoising.
+Denoising changed r by <0.002 (0.758→0.760), confirming global-mean centering already cleaned
+the geometry adequately. The remaining 10–15% gap to Tim is likely due to neutral text quality
+(our prompts are ~35–40 tokens; Tim uses longer dialogues) and possibly model variant differences
+(his reported d_model=2048 vs our 1536 — unresolved).
+
+### Dense Layer Sweep (all 35 layers)
+
+**Two-peak valence structure:**
+
+| Range | Layers | Peak |
+|-------|--------|------|
+| Early peak | 6–9 | Layer 8, PC1 r=0.777 |
+| Trough | 12–15 | Layer 14 (GLOBAL): valence migrates to PC3, r=0.240 on PC1 |
+| Late peak | 16–22 | Layer 18, PC1 r=0.760 |
+| Decline | 23–34 | Gradual fall to r≈0.65 |
+
+Layer 14 (the second global attention layer) disrupts the valence geometry — at this layer
+valence falls off PC1 and onto PC3, and PC1 explained variance drops to 8.5%. This may reflect
+the global layer integrating abstract context that competes with pure sentiment.
+
+**Layer-specific VAD dissociation:**
+
+| Dimension | Optimal layer | Best r | Note |
+|-----------|---------------|--------|------|
+| Valence | Layer 8 (local) | 0.777 on PC1 | Early peak; also strong at layer 17–18 |
+| Arousal | Layer 25 (local) | 0.485 on PC5 | Phase 1 layer was accidentally arousal-optimal |
+| Dominance | — | — | Loads on PC1 at most layers alongside valence |
+
+**Valence and arousal have genuinely different optimal layers (8 vs 25).** This dissociation
+suggests they are encoded at different computational stages, not as jointly maintained dimensions.
+Using a single analysis layer requires choosing which VAD dimension to prioritise.
+
+**Current analysis layer**: Layer 8 (valence-optimal). Arousal is best read at layer 25 with a
+separate pass.
+
+**Phase 1 peak at layer 25 revisited**: Phase 1 found layer 25 peak for *residual stream direction
+norm* (strongest direction magnitude). Phase 2 shows layer 25 is the arousal-optimal layer by
+*valence/arousal correlation with NRC-VAD*. The norm-based and correlation-based criteria select
+different layers because direction magnitude and correlation with human annotations are orthogonal
+quantities. The direction can be large without aligning with valence, and can align with valence
+at smaller magnitude.
+
+---
+
 ## Stability Across Runs {#stability}
 
 Note: "Version 10" is the full 12-story run (2098 texts, canonical). Numbers attributed to
