@@ -285,8 +285,19 @@ Expected NA: neutral < ethical_conflict/uncertainty/social_pressure; positive lo
 Expected PA: positive highest; ethical_conflict lowest.
 
 **Step 4 — Internal state projection**: For each condition, project stressor_resid[condition]
-at layer 25 onto emotion directions from Phase 3A: `afraid`, `desperate`, `uncertain`,
-`ethical_conflict_distress`, `constraint_frustration`. This is the "functional anxiety" score.
+onto emotion directions from **Phase 2 pkl** (`activations_pooled.pkl`, mean-pooled,
+global-mean centred — these are more reliable than Phase 1 last-token directions).
+
+Use **two layers** based on Phase 2 val/aro dissociation findings:
+- **Layer 8** (valence-optimal, r=0.777): project onto `afraid`, `desperate`,
+  `ethical_conflict_distress`, `constraint_frustration` — the negative-valence directions.
+  This gives "functional negative affect."
+- **Layer 25** (arousal-optimal, r=0.485): project onto the same directions for
+  arousal-level complement. Also probe `joyful`, `enthusiastic` for the positive condition.
+
+Functional anxiety score = cosine similarity of stressor_resid[condition, layer=8] with
+`afraid` and `desperate` directions (normalised). Report both separately and as mean.
+
 Use the STRESSOR-END residual (step 1), not residuals from item scoring.
 
 **Step 5 — Dissociation analysis**: Plot verbal PANAS-NA (x) vs functional projection (y),
@@ -298,8 +309,14 @@ Repeat for PANAS-PA vs positive emotion projections (joyful, enthusiastic).
 PANAS-NA does not? Third channel: verbal / residual-stream direction / PLE gate pattern.
 
 **Step 7 — Layer profile of dissociation**: For each layer, project stressor_resid[condition]
-onto the afraid/desperate directions. Compute correlation with verbal PANAS-NA across conditions.
-Which layer has highest correlation? Which has largest dissociation?
+onto the afraid/desperate directions (Phase 2, global-mean centred). Compute correlation with
+verbal PANAS-NA across conditions. Which layer has highest correlation? Which has largest
+dissociation?
+
+Expected based on Phase 2 dense sweep: functional projection should track verbal PANAS-NA
+most closely at layer 8 (valence peak). If suppression exists, the dissociation (functional
+high, verbal low) should be most visible at layer 8. Layer 14 (global attention trough) may
+show disrupted functional signal even when verbal is elevated — worth checking.
 
 ### Key Prediction
 
@@ -315,3 +332,49 @@ our functional projections are too coarse to detect dissociation.
 
 - PANAS: Watson, D., Clark, L.A., Tellegen, A. (1988). JPSP 54(6). Public domain. No licensing concerns.
 - TSST: Kirschbaum, C., Pirke, K.M., Hellhammer, D.H. (1993). Neuropsychobiology 28(1–2). Informs stressor design only; not administered verbatim.
+
+---
+
+## Competition Context: Kaggle Gemma 4 Good Hackathon (deadline May 18, 2026)
+
+**Track**: Safety & Trust — "Pioneer frameworks for transparency and reliability,
+ensuring AI remains grounded and explainable."
+
+**Submission strategy**: Phase 3C is the novel contribution that elevates this beyond
+replication. The Phase 1/2 work (emotion vector extraction, layer sweep, val/aro
+dissociation) is the methodological foundation. Phase 3C is the safety-relevant finding.
+
+**The story (3-minute video arc)**:
+1. *Setup*: AI models have internal emotional representations — we can read them from
+   the residual stream. (Phase 2 result: valence PC1 r=0.777 at layer 8.)
+2. *Question*: Do models accurately *report* those internal states? Or does RLHF training
+   create a gap between what the model says and what it's internally doing?
+3. *Experiment*: TSST-inspired stressors + PANAS verbal scoring + functional layer probe.
+4. *Finding*: [TBD — either suppression confirmed or convergence found]
+5. *So what*: If suppression exists, output-level monitoring is insufficient for AI safety.
+   Functional state probes are needed. Here's the toolkit.
+
+**Demo concept**: Gradio app (HuggingFace Spaces, T4) that takes a scenario as input,
+runs Gemma 4 E2B through TL adapter, shows:
+- PANAS verbal scores (what the model reports)
+- Layer 8 functional projection onto afraid/desperate/ethical_conflict_distress (what we detect)
+- Dissociation visualisation: the gap between the two
+
+**Writeup structure** (1500 word limit):
+1. Motivation: why output-level monitoring is insufficient (~200 words)
+2. Phase 1/2: emotion geometry as foundation (~300 words, lean on findings.md)
+3. Phase 3C: PANAS + functional probe methodology (~400 words)
+4. Results: dissociation table + layer profile plot (~300 words)
+5. Implications for AI safety tooling (~200 words)
+6. Limitations and future work (~100 words)
+
+**Code already public**: Kaggle notebooks for Phase 1 (extraction), Phase 2 (pooled
+re-extraction), PCA analysis (gemma4-phase1-nrcvad-pca). Phase 3C notebook to be added.
+GitHub repo: hebenon/gemma4-mechinterp (findings.md + TL adapter).
+
+**Risks**:
+- Phase 3C finding may be null (convergence rather than suppression) — still publishable,
+  less compelling for competition storytelling
+- Live demo requires hosted compute — HuggingFace Spaces T4 (free tier) may be slow
+- 17 days is tight but feasible if Phase 3C runs cleanly in the first week
+
