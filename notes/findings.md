@@ -720,6 +720,50 @@ If Phase 3C shows PANAS dissociates from functional state: factor the emotion ac
 
 Track desperation/afraid vector across conversation turns. Does it grow monotonically? Faster in global layers? Is growth reflected in PANAS-NA verbal report? Requires multi-turn infrastructure in the activation capture pipeline.
 
+### Phase 3F: Activation Steering (post-Phase 3C)
+
+**Question**: What happens when you add a clean emotion direction to the residual stream mid-forward-pass?
+
+**Motivation**: Phase 1G found that `corrected` bypasses PLE while `angry` activates it — suggesting there's architectural structure to how emotion directions interact with generation. Phase 2 gives us cleaner directions (mean-pooled, global-centred) to steer with.
+
+**Method**: Add α × direction_afraid to `hook_resid_post` at layer 8 (valence-optimal). Vary α. Inspect output tokens: does the model produce fear-associated vocabulary, hedging, or surface-calm text regardless?
+
+**Prediction**: Smaller α → surface-calm masking (RLHF suppression); larger α → fear-associated output breaks through. The threshold between these is itself a measurement of suppression strength.
+
+**Caveat**: Steering at a mean-pooled direction may behave differently than steering at a last-token direction. The direction is a mean over all story tokens — it's a semantic centroid, not a position-specific vector.
+
+### Phase 3G: Cross-layer Tracking of Individual Emotion Directions
+
+**Question**: Does "terrified" as a geometric direction stay coherent from layer 8 to 25, or does it transform substantially at the layer 14 global attention disruption?
+
+**Motivation**: The dense sweep shows valence has two peaks (layers 6–9, 16–22) separated by a trough at layer 14. This might mean: (a) the same direction persists but weakens, or (b) layer 14 genuinely reorganises the emotion geometry such that "terrified at layer 8" and "terrified at layer 25" are meaningfully different directions. These have very different implications.
+
+**Method**: For each of the 174 emotions, compute the cosine similarity between the direction at layer L and the direction at layer L+1. Plot the similarity curve across layers. If similarity drops sharply at layer 14, the geometry is being reorganised, not just attenuated.
+
+**Expected finding**: Similarity should be high (>0.9) within the two valence peaks and drop at layer 14, recovering as the late peak builds. If similarity stays high throughout, the disruption is amplitude-based, not geometric.
+
+### Phase 3H: Arousal in Attention Patterns (speculative)
+
+**Question**: If arousal is structurally minor in the residual stream (3.9% of variance at layer 25), does the arousal signal live in the attention patterns rather than the residual directions?
+
+**Motivation**: The "when-to-attend" might carry arousal information that "what-is-being-represented" doesn't. High-arousal processing might involve more heads attending to more tokens (diffuse attention), while low-arousal processing involves narrow attention. This is not captured by residual stream analysis.
+
+**Method**: Hook `blocks.{i}.attn.hook_pattern` for all 35 layers. For each emotion, compute summary statistics of the attention pattern (entropy, max attention, spread). Correlate these statistics with NRC-VAD arousal across the 174 emotions.
+
+**Expected finding**: Uncertain. If arousal truly has no clear residual footprint and yet is recoverable in the bipolar subset, something must carry it — attention patterns are the natural candidate.
+
+### Open Hypothesis: Negative Emotion Power Asymmetry and PPO
+
+**Observation**: Negative emotion directions are ~3× larger and more geometrically differentiated than positive ones (Phase 1I power asymmetry).
+
+**Candidate explanation**: Cameron Berg and Jord Negewan (Reciprocal Research, paper forthcoming ~2026-05) found that policy-based RL (PPO, which Gemma 4 almost certainly used) encodes negative reward signals as geometrically diffuse and positive reward signals as narrow/steep — the opposite of value-based RL. If this pattern transfers to the emotion directions, PPO training may be a direct cause of the negative asymmetry.
+
+**Alternative explanation**: Natural language has richer negative affect vocabulary — the asymmetry may be present in the base model before RLHF.
+
+**Test**: Compare base model vs instruction-tuned emotion direction geometry. If asymmetry amplifies under RLHF → Berg/PPO connection. If already present in base model at similar magnitude → linguistic asymmetry.
+
+**Note**: Berg's models were at much smaller scale (hundreds–thousands of parameters). Transferability to 5B+ models is unconfirmed. Flag this as speculative until the paper is available.
+
 ---
 
 ## Reference Data
