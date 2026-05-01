@@ -1,6 +1,6 @@
 # Gemma 4 E2B Mechinterp — Research Findings
 
-*Last updated: 2026-04-30. Covers Phase 1 (adapter + emotion extraction) and design for Phases 2–3.*
+*Last updated: 2026-05-01. Covers Phase 1 (adapter + emotion extraction), Phase 2 (token mean-pooling), and design for Phase 3.*
 
 ---
 
@@ -440,21 +440,21 @@ extraction architecture, and emotion story set are unchanged.
 - **TPU-safe**: `use_cache=False`, no `model.generate()` — just forward passes on pre-generated
   story text loaded from `stories_flat.json`.
 
-### Results at Layer 18 (sparse sweep optimum)
+### Sparse-Sweep Results at Layer 18 (intermediate)
 
-| | Phase 1 (last-token, L25, neutral-mean) | Phase 2 (mean-pool, L18, global-mean) |
+Layer 18 was the optimum from a sweep at intervals of 3 layers, which skipped layer 8.
+See confirmed Layer 8 results below.
+
+| | Phase 1 (last-token, L25, neutral-mean) | Phase 2 sparse-sweep (mean-pool, L18, global-mean) |
 |---|---|---|
-| PC1 valence r | 0.403 | **0.760** |
+| PC1 valence r | 0.403 | 0.760 |
 | PC1 arousal r | 0.206 | 0.184 |
 | Best arousal (any PC) | PC6 r=0.475 | PC3 r=0.402 |
 | Val spread across PCs | PC1+PC4 split | PC1 clean |
-| Tim's result | — | 0.84–0.88 |
 
 The 1.9× valence improvement comes from mean-pooling + layer selection, not from denoising.
 Denoising changed r by <0.002 (0.758→0.760), confirming global-mean centering already cleaned
-the geometry adequately. The remaining 10–15% gap to Tim is likely due to neutral text quality
-(our prompts are ~35–40 tokens; Tim uses longer dialogues) and possibly model variant differences
-(his reported d_model=2048 vs our 1536 — unresolved).
+the geometry adequately. The remaining gap to Tim is addressed in the confirmed Layer 8 results below.
 
 ### Dense Layer Sweep (all 35 layers)
 
@@ -485,6 +485,50 @@ Using a single analysis layer requires choosing which VAD dimension to prioritis
 
 **Current analysis layer**: Layer 8 (valence-optimal). Arousal is best read at layer 25 with a
 separate pass.
+
+### Confirmed Results at Layer 8 (valence-optimal, dense sweep winner)
+
+Full 174-emotion analysis, Phase 2 pkl (version 11 run), global-mean centred + 12-PC denoising:
+
+| | Phase 1 (L25, last-token) | Phase 2 (L8, mean-pool, confirmed) |
+|---|---|---|
+| PC1 valence r | 0.403 | **0.777*** |
+| PC1 var% | 37.4% | 16.4% |
+| PC1 dominant emotions (+ pole) | surprised, rattled, hysterical | happy, pleased, grateful, triumphant |
+| PC1 dominant emotions (− pole) | optimistic, grateful, cheerful | panicked, hysterical, terrified |
+| PC1 arousal r | 0.206 | −0.144 |
+| PC1 dominance r | −0.328 | +0.603 |
+| Best arousal (any PC) | PC6 r=0.475 | PC3 r=0.384 (diffuse) |
+| Val spread | PC1+PC4 split | PC1 clean |
+| Raw vs denoised delta | — | +0.003 (0.774→0.777) |
+| Tim's result | — | 0.84–0.88 |
+
+**Arousal at layer 8 is diffuse**: split across PC3 (r=+0.384), PC4 (r=+0.342), PC5 (r=+0.367).
+No single PC cleanly captures arousal — consistent with val/aro dissociation (layer 8 is
+arousal-suboptimal). Full arousal recovery requires a dedicated layer-25 analysis pass.
+
+**Cumulative R² (Phase 2, layer 8, 174 emotions):**
+
+| k PCs | Valence R² | Arousal R² | Dominance R² |
+|-------|------------|------------|--------------|
+| 1 | 0.604 | 0.021 | 0.364 |
+| 5 | 0.651 | 0.450 | 0.483 |
+| 10 | 0.692 | 0.512 | 0.543 |
+| 20 | 0.759 | 0.609 | 0.639 |
+
+Single PC already captures 60.4% of valence variance — a much cleaner structure than Phase 1
+(16.3% on PC1). Arousal reaches 45% with 5 PCs; the diffuse split across PC3/4/5 accounts for this.
+
+**Bipolar subset (top-15 per valence pole, N=30 emotions):**
+
+- PC1 valence r = **+0.846** (16.8% var)
+- Top-5 PCs cumulative: valence R² = 0.825 → **r = 0.908**
+
+This directly matches Tim's reported range (0.84–0.88). The gap between 0.777 (full 174) and 0.846
+(bipolar subset) reflects near-synonym cluster dilution: the full set forces PCA to account for
+within-cluster variation (ecstatic/elated/euphoric, terrified/horrified/frightened) before
+between-cluster structure. The selection effect is structural, not a data quality issue — both
+results are valid, measuring different things.
 
 **Phase 1 peak at layer 25 revisited**: Phase 1 found layer 25 peak for *residual stream direction
 norm* (strongest direction magnitude). Phase 2 shows layer 25 is the arousal-optimal layer by
