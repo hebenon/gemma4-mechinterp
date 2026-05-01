@@ -483,8 +483,8 @@ the global layer integrating abstract context that competes with pure sentiment.
 suggests they are encoded at different computational stages, not as jointly maintained dimensions.
 Using a single analysis layer requires choosing which VAD dimension to prioritise.
 
-**Current analysis layer**: Layer 8 (valence-optimal). Arousal is best read at layer 25 with a
-separate pass.
+**Current analysis layer**: Layer 8 (valence-optimal). Arousal analysis at layer 25 documented
+in the next subsection.
 
 ### Confirmed Results at Layer 8 (valence-optimal, dense sweep winner)
 
@@ -529,6 +529,61 @@ This directly matches Tim's reported range (0.84–0.88). The gap between 0.777 
 within-cluster variation (ecstatic/elated/euphoric, terrified/horrified/frightened) before
 between-cluster structure. The selection effect is structural, not a data quality issue — both
 results are valid, measuring different things.
+
+### Arousal Analysis at Layer 25 (version 12 run)
+
+Full 171-emotion analysis, same pipeline as valence section (global-mean centred + 11-PC denoising):
+
+**Layer 25 per-PC correlations (top 5):**
+
+| PC | var% | Valence r | Arousal r | Dominance r |
+|----|------|-----------|-----------|-------------|
+| 1 | 14.5% | +0.651*** | −0.274*** | +0.466*** |
+| 2 | 8.9% | +0.125 | +0.100 | +0.128 |
+| 3 | 7.2% | −0.121 | −0.258*** | −0.262*** |
+| 4 | 4.6% | −0.379*** | −0.045 | −0.226** |
+| **5** | **3.9%** | **+0.149** | **+0.485****** | **+0.340**** |
+
+PC1 at layer 25 is **still valence-dominated** (r=+0.651), not arousal. Arousal peaks at PC5 (r=+0.485, 3.9% variance) — a minor, late-emerging component.
+
+**PC5 emotion poles (high vs low arousal):**
+- + pole (high arousal): enthusiastic, thrilled, happy, cheerful, aroused, ecstatic, jubilant, panicked
+- − pole (low arousal): serene, lazy, indifferent, listless, bitter, resigned, kind, patient
+
+The poles are interpretively coherent: the activating–deactivating axis. The mixture of positive (thrilled) and negative (panicked) in the high-arousal pole confirms this is an arousal (intensity) axis rather than a valence axis.
+
+**Cumulative R² at layer 25:**
+
+| k PCs | Valence R² | Arousal R² | Dominance R² |
+|-------|------------|------------|--------------|
+| 1 | 0.424 | 0.075 | 0.217 |
+| 5 | 0.620 | 0.390 | 0.468 |
+| 10 | 0.668 | 0.432 | 0.535 |
+| 20 | 0.715 | 0.553 | 0.647 |
+
+Valence is still the leading dimension at layer 25 (R²=0.424 on PC1 alone vs arousal R²=0.075). Layer 25 is arousal-optimal by the single-best-PC criterion, not by cumulative coverage.
+
+**Arousal bipolar subset (top-15 high + top-15 low arousal, N=30):**
+
+| k PCs | Arousal R² | r |
+|-------|------------|---|
+| 1 | 0.279 | 0.528** |
+| 3 | 0.287 | 0.536 |
+| 5 | 0.691 | **0.831** |
+
+r=0.831 with 5 PCs — arousal is recoverable under selection, but requires multiple components. PC4 shows aro=−0.635*** in the subset vs aro=−0.045 (NS) in the full space; arousal geometry is partially masked by synonym-cluster variance in the full emotion set (same dilution as valence, but more severe).
+
+**Valence vs Arousal: structural comparison**
+
+| | Valence at L8 | Arousal at L25 |
+|--|--|--|
+| Best single PC | PC1 r=0.777 | PC5 r=0.485 |
+| Best PC variance | 16.4% | 3.9% |
+| Bipolar subset k=1 | r=0.846 | r=0.528 |
+| Bipolar subset k=5 | r=0.908 | r=0.831 |
+| Cumulative R² k=5 | 0.651 | 0.390 |
+
+Valence has a **clean dominant axis**; arousal is **structurally minor and diffuse**, requiring 5 PCs to approach comparable recovery. This is consistent with the absence of a circumplex in Phase 1 — arousal is encoded but is not co-equal with valence. It occupies a small corner of the representational space even at its optimal layer.
 
 **Phase 1 peak at layer 25 revisited**: Phase 1 found layer 25 peak for *residual stream direction
 norm* (strongest direction magnitude). Phase 2 shows layer 25 is the arousal-optimal layer by
