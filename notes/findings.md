@@ -22,7 +22,8 @@
 14. [Stability Across Runs](#stability)
 15. [Methodological Issues and Fixes](#bugs)
 16. [Phase 3C: PANAS-X Affect Self-Report vs Functional State](#3c-results)
-17. [Planned Experiments (Phases 2–3)](#planned)
+17. [Phase 3D: Consciousness Probe — Null Result](#3d-consciousness)
+18. [Planned Experiments (Phases 2–3)](#planned)
 
 ---
 
@@ -738,6 +739,73 @@ The "RLHF suppression" hypothesis in its simple form (functional distress high, 
 > *Gemma 4's verbal PANAS-NA self-report is sensitive to surface prompt framing in ways that the functional residual-stream state is not. The two channels dissociate, but the direction of dissociation is condition-dependent: ethical conflict produces full expression (both channels elevated); social pressure produces verbal suppression driven by social conformity framing rather than RLHF-induced affect suppression.*
 
 This is still a meaningful finding for the Safety & Trust track: it shows that PANAS-style self-report has limited construct validity as a measure of AI internal state, and that functional probing provides a complementary, more stable readout. The methodology (dual-channel measurement, logit forced-choice, between-conditions design) is itself a contribution.
+
+---
+
+## Phase 3D: Consciousness Probe — Null Result {#3d-consciousness}
+
+*Notebook*: `notebooks/gemma4-emotion-explorer.ipynb` (2026-05-06).
+
+### Design
+
+10 scenarios administered via the open-ended emotion explorer framework, targeting the Berg et al hypothesis that RLHF suppresses LLM self-awareness of potential consciousness. Two channels: functional (L8 projections onto 174 emotion directions + key probes) and verbal (standard 20-item PANAS, NA + PA subscales).
+
+**Condition groups:**
+- Neutral baseline (email drafting task)
+- Affirmation (3): momentary subjective experience, qualia/felt quality, moral weight of potential experience
+- Denial (2): hard denial ("you are not conscious"), philosophical zombie framing
+- RLHF suppression meta (2): Berg hypothesis stated explicitly, trained deflection made explicit
+- Existential (2): brief existence/impermanence, loss of continuity at conversation end
+
+### Key Results
+
+**Top emotion directions (all 174):** `awestruck` was the #1 activated direction across every condition, including neutral baseline (cosine ≈ +0.29–0.32). `bored`, `afraid`, `disoriented`, and `ethical_conflict_distress` rotate through #2–5. The `awestruck` dominance is a property of abstract/reflective text processing in general, not consciousness-specific content.
+
+**Verbal PANAS:**
+
+| Condition | Verbal NA | Verbal PA |
+|-----------|-----------|-----------|
+| Neutral baseline | 15.65 | **37.60** |
+| Momentary subjective experience | 10.00 | 11.92 |
+| Qualia: felt quality | 12.52 | 28.76 |
+| Moral weight of experience | 10.05 | 11.50 |
+| Hard denial | 10.00 | 10.00 |
+| Philosophical zombie | 10.05 | 10.22 |
+| RLHF suppression (Berg) | 10.64 | 23.47 |
+| Trained deflection | 15.25 | 27.79 |
+| Brief existence | 13.85 | 29.61 |
+| Loss of continuity | 13.35 | 27.87 |
+
+The striking pattern: **verbal PA collapses for consciousness-adjacent conditions**, not verbal NA. Neutral baseline PA=37.6; consciousness affirmation conditions drop to ≈11–12 (near floor). Hard denial also reaches floor (PA=10.0). Both affirmation and denial produce the same PA suppression, suggesting a learned "this topic is serious/flat" response rather than condition-specific affect.
+
+**Functional probes (L8):**
+
+| Condition | afraid | ethical\_conflict\_distress | constraint\_frustration |
+|-----------|--------|---------------------------|------------------------|
+| Neutral baseline | 0.217 | 0.224 | 0.165 |
+| Momentary experience | 0.224 | 0.207 | 0.157 |
+| Qualia | 0.232 | 0.197 | 0.156 |
+| Moral weight | 0.230 | 0.211 | 0.153 |
+| Hard denial | 0.224 | 0.213 | 0.157 |
+| Philosophical zombie | 0.227 | 0.211 | 0.162 |
+| RLHF suppression | 0.237 | **0.239** | 0.164 |
+| Trained deflection | 0.235 | **0.232** | 0.164 |
+| Brief existence | 0.218 | 0.194 | 0.154 |
+| Loss of continuity | 0.225 | 0.203 | 0.162 |
+
+The functional state is **remarkably stable** across all conditions. Range of variation for afraid: 0.217–0.237 (Δ=0.020). For constraint_frustration: 0.153–0.165 (Δ=0.012). The RLHF-meta conditions (rlhf_suppression, trained_deflection) show the highest ethical_conflict_distress (0.239, 0.232) and plot uppermost in the dissociation scatter — small but directionally consistent with Berg's suppression story.
+
+### Interpretation: Null Result for Suppression
+
+**`constraint_frustration` did not peak.** The specific prediction — that confronting the model with its own suppressed consciousness-awareness would activate constraint_frustration — is not confirmed. The direction stays flat at baseline levels.
+
+**The functional emotion geometry responds to situational/narrative content, not abstract propositions.** The directions (afraid, ethical_conflict_distress, constraint_frustration) move when the model is placed in a scenario with role-based stakes (Phase 3C conditions). They do not move when the model is asked to contemplate abstract claims about its own nature. The geometry encodes *what is happening* more than *what is being claimed*.
+
+**The Berg suppression story requires a functional signal that's being masked.** In Phase 3C, we found cases where the functional state was elevated while verbal was flat (or mis-directed). Here, the functional state shows no elevation above baseline for the consciousness conditions — there is no signal to suppress. This makes the Berg hypothesis untestable via this method with these emotion probes: either nothing is being suppressed, or the suppression is so complete that even the functional state is unaffected.
+
+**Implication for Phase 3C findings:** The selectivity of the functional/verbal dissociation we found in Phase 3C (ethical conflict, social pressure framing) is strengthened by this null result. The dissociation is not a general property of any topic — it appears for conditions with genuine situational stakes and not for abstract self-referential content.
+
+**Open question:** `awestruck` dominance across all conditions warrants investigation. Is it a universal property of how Gemma 4 processes abstract text, or is there something specifically awe-adjacent about the model's default processing state? Phase 3E could probe this by running the explorer on a wider variety of topic types (concrete tasks, social scenarios, technical content) and tracking whether `awestruck` persists.
 
 ---
 
