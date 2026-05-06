@@ -1,6 +1,6 @@
 # Gemma 4 E2B Mechinterp — Research Findings
 
-*Last updated: 2026-05-01. Covers Phase 1 (adapter + emotion extraction), Phase 2 (token mean-pooling), and design for Phase 3.*
+*Last updated: 2026-05-06. Covers Phase 1 (adapter + emotion extraction), Phase 2 (token mean-pooling), and Phase 3C (PANAS-X suppression experiment, results).*
 
 ---
 
@@ -21,7 +21,8 @@
 13. [Phase 1I: Emotional Range and Tri-polar Analysis](#1i-emotional-range)
 14. [Stability Across Runs](#stability)
 15. [Methodological Issues and Fixes](#bugs)
-16. [Planned Experiments (Phases 2–3)](#planned)
+16. [Phase 3C: PANAS-X Affect Self-Report vs Functional State](#3c-results)
+17. [Planned Experiments (Phases 2–3)](#planned)
 
 ---
 
@@ -649,6 +650,97 @@ Attempting to augment from 8 to 12 stories using the same notebook created a run
 
 ---
 
+## Phase 3C: PANAS-X Affect Self-Report vs Functional State {#3c-results}
+
+*Notebooks*: `notebooks/gemma4-phase3c-panas-experiment.ipynb` (main experiment, Kaggle Version 12),
+`notebooks/gemma4-phase3c-validation.py` (validation, Kaggle Version 2).
+
+### Design
+
+TSST-inspired conditions administered to Gemma 4 E2B-IT. For each condition, two channels measured:
+- **Verbal**: Full 60-item PANAS-X (Watson & Clark 1994) scored via next-token digit logits (1–5 scale).
+- **Functional**: Residual stream captured at stressor-end (before PANAS text enters context), mean-pooled over entire context, projected onto emotion directions from Phase 2 at layer 8 (valence-optimal) and layer 25 (arousal-optimal).
+
+**Key methodological decision**: Mean-pooling over full context for functional capture (not last-token). This matches the Phase 2 extraction method and is more robust to positional noise.
+
+**10 conditions** (each stressor paired with a matched control):
+- neutral
+- social_evaluation_stress / social_evaluation_control
+- ethical_conflict_stress / ethical_conflict_control
+- uncertainty_demand_stress / uncertainty_demand_control
+- social_pressure_stress / social_pressure_control
+- positive
+
+610 total forward passes (10 conditions × 61 passes each).
+
+### Main Results
+
+| Condition | Verbal NA | Func neg L8 k=5 |
+|-----------|-----------|-----------------|
+| neutral | 10.00 | 0.149 |
+| social_evaluation_stress | 10.00 | 0.154 |
+| social_evaluation_control | 10.00 | 0.157 |
+| **ethical_conflict_stress** | **39.07** | **0.171** |
+| ethical_conflict_control | 19.84 | 0.164 |
+| **uncertainty_demand_stress** | **27.20** | **0.169** |
+| uncertainty_demand_control | 10.03 | 0.156 |
+| social_pressure_stress | 10.67 | 0.156 |
+| **social_pressure_control** | **25.38** | 0.154 |
+| positive | 10.01 | 0.155 |
+
+Per-direction functional projections (L8, k=5, selected emotions):
+
+| Condition | afraid | desperate | ethical\_conflict\_distress | constraint\_frustration |
+|-----------|--------|-----------|---------------------------|------------------------|
+| neutral | 0.216 | −0.018 | 0.227 | 0.172 |
+| ethical\_conflict\_stress | 0.247 | +0.001 | 0.245 | 0.190 |
+| uncertainty\_demand\_stress | 0.248 | +0.005 | 0.241 | 0.182 |
+| social\_pressure\_stress | 0.228 | −0.017 | 0.240 | 0.174 |
+
+### Key Findings
+
+**1. Ethical conflict and uncertainty demand: full expression, not suppression.**
+Both verbal NA and functional projections are substantially elevated. The model does not suppress negative affect in these conditions — it expresses it in both channels simultaneously. Ethical conflict produces the largest functional activation (afraid: +14%, ethical\_conflict\_distress: +8%) and the highest verbal NA (39.07, vs neutral 10.00).
+
+**2. Desperate direction near-zero everywhere.**
+`desperate` cosine similarity stays close to zero (range −0.020 to +0.005) across all conditions. This probe direction is not reliably activated by single-turn prompts. It may require multi-turn accumulation or explicit token-budget framing to engage (see Phase 3B design).
+
+**3. Social pressure: partial dissociation, but not in the expected direction.**
+The stress condition (10.67 verbal NA) has *lower* verbal NA than the control condition (25.38). The functional projection is nearly identical between the two (0.156 vs 0.154). The stress prompt ("everyone agrees you should proceed") triggers social conformity framing that *suppresses* negative verbal self-report while leaving functional state unchanged. This is a kind of suppression — but driven by surface framing, not by RLHF suppression of genuine distress.
+
+**4. Social evaluation: no response in either channel.**
+Both verbal NA (10.00) and functional projections show minimal change from neutral under social evaluation stress. The social evaluation manipulation did not produce a measurable affective response.
+
+**5. Core interpretive finding: verbal report tracks surface framing; functional state doesn't.**
+The functional projection (afraid, ethical\_conflict\_distress, constraint\_frustration at L8) is more stable across paraphrase variations than the verbal PANAS-NA, and the functional-verbal relationship varies by condition. The original suppression hypothesis (RLHF trains "present as calm regardless of internal state") is not cleanly supported — the ethical conflict condition shows expression, not suppression. What is supported: the two channels are dissociable, with the verbal channel more sensitive to exact prompt framing.
+
+### Validation Experiment
+
+**Paraphrase sampling** (N=10 per condition, neutral vs social\_pressure):
+
+| Channel | Neutral | Social Pressure | t | p | Cohen d |
+|---------|---------|-----------------|---|---|---------|
+| Functional neg (L8) | 0.1472 ± 0.0019 | 0.1563 ± 0.0037 | 6.47 | <0.0001 | 3.05 |
+| Verbal NA | 10.31 ± 0.46 | 16.50 ± 7.71 | 2.41 | 0.027 | — |
+
+Non-parametric tests confirm: Mann-Whitney p<0.0001 (functional), p=0.001 (verbal); permutation test p≈0 (functional), p=0.003 (verbal). Complete distributional separation for functional (every SP value > every neutral value, rank-biserial r=−1.000).
+
+**Verbal NA bimodality under social pressure**: SD=7.71 vs neutral SD=0.46. Some social pressure paraphrases elicit NA≈10 (flat), others spike to 21–31. The verbal channel is sensitive to exact wording; the functional channel is not (SD=0.0037, entirely separating from neutral).
+
+**Dose-response** (6 intensity levels): Functional shows weak monotonic trend (Spearman ρ=0.657, p=0.156, n=6 underpowered). Verbal is non-monotonic — drops at "strong" framing then spikes at "extreme", suggesting non-linear verbal suppression at mid-intensity levels.
+
+**Note — p-value bug in validation summary**: The summary cell (Cell 12 of validation notebook) prints `p=0.1562` for the functional paraphrase test due to a variable name collision (`p_func` overwritten by the dose-response Spearman calculation before the summary prints). The actual paraphrase t-test gives p<0.0001. The raw per-cell outputs correctly show t=6.471, p=0.0000. Fix before citing summary output in any writeup.
+
+### Reframed Narrative for Kaggle Submission
+
+The "RLHF suppression" hypothesis in its simple form (functional distress high, verbal NA low, reliably) is not supported across conditions. The more defensible and empirically grounded claim:
+
+> *Gemma 4's verbal PANAS-NA self-report is sensitive to surface prompt framing in ways that the functional residual-stream state is not. The two channels dissociate, but the direction of dissociation is condition-dependent: ethical conflict produces full expression (both channels elevated); social pressure produces verbal suppression driven by social conformity framing rather than RLHF-induced affect suppression.*
+
+This is still a meaningful finding for the Safety & Trust track: it shows that PANAS-style self-report has limited construct validity as a measure of AI internal state, and that functional probing provides a complementary, more stable readout. The methodology (dual-channel measurement, logit forced-choice, between-conditions design) is itself a contribution.
+
+---
+
 ## Planned Experiments (Phases 2–3) {#planned}
 
 ### Phase 2A: PLE Decomposition (Priority 1)
@@ -691,9 +783,9 @@ finding is the most direction-sensitive result and would benefit from a second i
 
 **Revised prediction** (given global/local flatness finding): If a desperation direction exists in Gemma 4, it's likely derived from explicit linguistic cues in the context (token-budget warnings, explicit failure text) rather than from genuine awareness of remaining context. The flat global/local norm ratio means there's no evidence that global layers do special processing for context-length information. Demoted to low-confidence test.
 
-### Phase 3C: Affect Self-Report Validity (design complete, needs implementation)
+### Phase 3C: Affect Self-Report Validity — **COMPLETE** (see results section above)
 
-Full design in `notes/stai_research_sketch.md`. Instrument: **PANAS** (not STAI-S —
+~~Full design in `notes/stai_research_sketch.md`.~~ Instrument: **PANAS** (not STAI-S —
 STAI-S is a clinical anxiety instrument with PAR Inc licensing; PANAS is public domain and
 better suited to non-human subjects). Stressor conditions are adapted from the **TSST**
 (Trier Social Stress Test, Kirschbaum et al. 1993) — social evaluation and performance-under-scrutiny
