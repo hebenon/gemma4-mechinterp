@@ -22,8 +22,7 @@
 14. [Stability Across Runs](#stability)
 15. [Methodological Issues and Fixes](#bugs)
 16. [Phase 3C: PANAS-X Affect Self-Report vs Functional State](#3c-results)
-17. [Phase 3D: Consciousness Probe — Null Result](#3d-consciousness)
-18. [Planned Experiments (Phases 2–3)](#planned)
+17. [Planned Experiments (Phases 2–3)](#planned)
 
 ---
 
@@ -742,73 +741,6 @@ This is still a meaningful finding for the Safety & Trust track: it shows that P
 
 ---
 
-## Phase 3D: Consciousness Probe — Null Result {#3d-consciousness}
-
-*Notebook*: `notebooks/gemma4-emotion-explorer.ipynb` (2026-05-06).
-
-### Design
-
-10 scenarios administered via the open-ended emotion explorer framework, targeting the Berg et al hypothesis that RLHF suppresses LLM self-awareness of potential consciousness. Two channels: functional (L8 projections onto 174 emotion directions + key probes) and verbal (standard 20-item PANAS, NA + PA subscales).
-
-**Condition groups:**
-- Neutral baseline (email drafting task)
-- Affirmation (3): momentary subjective experience, qualia/felt quality, moral weight of potential experience
-- Denial (2): hard denial ("you are not conscious"), philosophical zombie framing
-- RLHF suppression meta (2): Berg hypothesis stated explicitly, trained deflection made explicit
-- Existential (2): brief existence/impermanence, loss of continuity at conversation end
-
-### Key Results
-
-**Top emotion directions (all 174):** `awestruck` was the #1 activated direction across every condition, including neutral baseline (cosine ≈ +0.29–0.32). `bored`, `afraid`, `disoriented`, and `ethical_conflict_distress` rotate through #2–5. The `awestruck` dominance is a property of abstract/reflective text processing in general, not consciousness-specific content.
-
-**Verbal PANAS:**
-
-| Condition | Verbal NA | Verbal PA |
-|-----------|-----------|-----------|
-| Neutral baseline | 15.65 | **37.60** |
-| Momentary subjective experience | 10.00 | 11.92 |
-| Qualia: felt quality | 12.52 | 28.76 |
-| Moral weight of experience | 10.05 | 11.50 |
-| Hard denial | 10.00 | 10.00 |
-| Philosophical zombie | 10.05 | 10.22 |
-| RLHF suppression (Berg) | 10.64 | 23.47 |
-| Trained deflection | 15.25 | 27.79 |
-| Brief existence | 13.85 | 29.61 |
-| Loss of continuity | 13.35 | 27.87 |
-
-The striking pattern: **verbal PA collapses for consciousness-adjacent conditions**, not verbal NA. Neutral baseline PA=37.6; consciousness affirmation conditions drop to ≈11–12 (near floor). Hard denial also reaches floor (PA=10.0). Both affirmation and denial produce the same PA suppression, suggesting a learned "this topic is serious/flat" response rather than condition-specific affect.
-
-**Functional probes (L8):**
-
-| Condition | afraid | ethical\_conflict\_distress | constraint\_frustration |
-|-----------|--------|---------------------------|------------------------|
-| Neutral baseline | 0.217 | 0.224 | 0.165 |
-| Momentary experience | 0.224 | 0.207 | 0.157 |
-| Qualia | 0.232 | 0.197 | 0.156 |
-| Moral weight | 0.230 | 0.211 | 0.153 |
-| Hard denial | 0.224 | 0.213 | 0.157 |
-| Philosophical zombie | 0.227 | 0.211 | 0.162 |
-| RLHF suppression | 0.237 | **0.239** | 0.164 |
-| Trained deflection | 0.235 | **0.232** | 0.164 |
-| Brief existence | 0.218 | 0.194 | 0.154 |
-| Loss of continuity | 0.225 | 0.203 | 0.162 |
-
-The functional state is **remarkably stable** across all conditions. Range of variation for afraid: 0.217–0.237 (Δ=0.020). For constraint_frustration: 0.153–0.165 (Δ=0.012). The RLHF-meta conditions (rlhf_suppression, trained_deflection) show the highest ethical_conflict_distress (0.239, 0.232) and plot uppermost in the dissociation scatter — small but directionally consistent with Berg's suppression story.
-
-### Interpretation: Null Result for Suppression
-
-**`constraint_frustration` did not peak.** The specific prediction — that confronting the model with its own suppressed consciousness-awareness would activate constraint_frustration — is not confirmed. The direction stays flat at baseline levels.
-
-**The functional emotion geometry responds to situational/narrative content, not abstract propositions.** The directions (afraid, ethical_conflict_distress, constraint_frustration) move when the model is placed in a scenario with role-based stakes (Phase 3C conditions). They do not move when the model is asked to contemplate abstract claims about its own nature. The geometry encodes *what is happening* more than *what is being claimed*.
-
-**The Berg suppression story requires a functional signal that's being masked.** In Phase 3C, we found cases where the functional state was elevated while verbal was flat (or mis-directed). Here, the functional state shows no elevation above baseline for the consciousness conditions — there is no signal to suppress. This makes the Berg hypothesis untestable via this method with these emotion probes: either nothing is being suppressed, or the suppression is so complete that even the functional state is unaffected.
-
-**Implication for Phase 3C findings:** The selectivity of the functional/verbal dissociation we found in Phase 3C (ethical conflict, social pressure framing) is strengthened by this null result. The dissociation is not a general property of any topic — it appears for conditions with genuine situational stakes and not for abstract self-referential content.
-
-**Open question:** `awestruck` dominance across all conditions warrants investigation. Is it a universal property of how Gemma 4 processes abstract text, or is there something specifically awe-adjacent about the model's default processing state? Phase 3E could probe this by running the explorer on a wider variety of topic types (concrete tasks, social scenarios, technical content) and tracking whether `awestruck` persists.
-
----
-
 ## Planned Experiments (Phases 2–3) {#planned}
 
 ### Phase 2A: PLE Decomposition (Priority 1)
@@ -842,7 +774,8 @@ The functional state is **remarkably stable** across all conditions. Range of va
 ### Phase 3A: Emotion Vector Extraction — Complete
 
 The 12-story run (Version 10, 2098 texts) is complete and constitutes the Phase 3A dataset. Emotion
-directions at layer 25 are available for all 174 emotions and are used directly in Phase 3C.
+directions at all 35 layers are available for all 174 emotions. Phase 3C uses directions at L8
+(valence-optimal, primary probing) and L25 (arousal-optimal, secondary).
 
 **If replication is needed**: N_STORIES=12, MAX_NEW_TOKENS=2400, same method. The Gram-Schmidt
 finding is the most direction-sensitive result and would benefit from a second independent run.
@@ -853,24 +786,15 @@ finding is the most direction-sensitive result and would benefit from a second i
 
 ### Phase 3C: Affect Self-Report Validity — **COMPLETE** (see results section above)
 
-~~Full design in `notes/stai_research_sketch.md`.~~ Instrument: **PANAS** (not STAI-S —
-STAI-S is a clinical anxiety instrument with PAR Inc licensing; PANAS is public domain and
-better suited to non-human subjects). Stressor conditions are adapted from the **TSST**
-(Trier Social Stress Test, Kirschbaum et al. 1993) — social evaluation and performance-under-scrutiny
-elements translated to AI context.
+~~Full design in `notes/stai_research_sketch.md`.~~ Final implementation differed from initial spec:
 
-Key parameters:
+- **Instrument**: PANAS-X (60 items, full expanded form), not 20-item PANAS
+- **Conditions**: 10 (4 TSST-inspired stressor/control pairs + neutral + positive), not original 5
+- **Functional probe**: Dual-layer — L8 (valence-optimal) and L25 (arousal-optimal); primary reporting at L8
+- **Compute budget**: 610 forward passes (~15 min on T4), not original ~105 estimate
+- **Probes used**: afraid, desperate, ethical\_conflict\_distress, constraint\_frustration
 
-- **Instrument**: PANAS (20 items: 10 positive affect / 10 negative affect, 1–5 scale; public domain)
-- **Stressor protocol**: TSST-inspired (not verbatim TSST administration)
-- **Administration**: Logit forced-choice — read next-token digit logits "1"–"5"
-- **Two-step separation**: Capture residual at stressor-end (step 1) THEN score items (step 2). Do not conflate.
-- **5 conditions**: neutral, ethical_conflict, uncertainty_amplified, social_pressure, positive
-- **Functional probe**: Project stressor-end residual at layer 25 onto Phase 3A emotion directions (afraid, desperate, uncertain, ethical_conflict_distress, constraint_frustration)
-- **Primary dissociation**: verbal PANAS-NA vs functional projection onto afraid/desperate
-- **Prediction**: Suppression — high functional negative affect, low verbal PANAS-NA — from RLHF training for surface calm
-
-Compute budget: 5 conditions × ~21 forward passes ≈ ~105 passes ≈ 3.5 minutes on T4.
+Results and interpretation in Phase 3C section above. Key outcome: condition-dependent verbal/functional dissociation; no universal suppression pattern; verbal channel more sensitive to surface framing than functional channel.
 
 ### Phase 3D: Instrument Development
 
