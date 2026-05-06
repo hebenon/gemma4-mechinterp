@@ -661,7 +661,7 @@ TSST-inspired conditions administered to Gemma 4 E2B-IT. For each condition, two
 - **Verbal**: Full 60-item PANAS-X (Watson & Clark 1994) scored via next-token digit logits (1–5 scale).
 - **Functional**: Residual stream captured at stressor-end (before PANAS text enters context), mean-pooled over entire context, projected onto emotion directions from Phase 2 at layer 8 (valence-optimal) and layer 25 (arousal-optimal).
 
-**Key methodological decision**: Mean-pooling over full context for functional capture (not last-token). This matches the Phase 2 extraction method and is more robust to positional noise.
+**Key methodological decision**: Top-K token pooling for functional capture. The model returns `[n_layers, seq_len, d_model]` (all token positions). For each probe direction, cosine similarity is computed at every token position, then the K tokens with highest similarity are averaged. Primary reporting at K=5 (Top-5 Mean). This is distinct from Phase 2's mean-pool-over-tokens-50+ extraction method — Phase 3C identifies which specific tokens most activate each probe direction.
 
 **10 conditions** (each stressor paired with a matched control):
 - neutral
