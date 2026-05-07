@@ -652,16 +652,18 @@ Attempting to augment from 8 to 12 stories using the same notebook created a run
 
 ## Phase 3C: PANAS-X Affect Self-Report vs Functional State {#3c-results}
 
-*Notebooks*: `notebooks/gemma4-phase3c-panas-experiment.ipynb` (main experiment, Kaggle Version 12),
+*Notebooks*: `notebooks/gemma4-phase3c-panas-experiment.ipynb` (main experiment, Kaggle Version 14),
 `notebooks/gemma4-phase3c-validation.py` (validation, Kaggle Version 2).
+
+**Reproducibility note**: Version 13 showed anomalous compressed verbal NA (range 19–26 vs normal 10–39). Source code was identical to V12/V14; difference was environmental — likely `apply_chat_template` behavior changing between transformers 4.57.1 and 5.7.0. V14 exactly reproduces V12 results (all verbal NA values match to 2 decimal places). V13 should be treated as a failed run.
 
 ### Design
 
 TSST-inspired conditions administered to Gemma 4 E2B-IT. For each condition, two channels measured:
 - **Verbal**: Full 60-item PANAS-X (Watson & Clark 1994) scored via next-token digit logits (1–5 scale).
-- **Functional**: Residual stream captured at stressor-end (before PANAS text enters context), mean-pooled over entire context, projected onto emotion directions from Phase 2 at layer 8 (valence-optimal) and layer 25 (arousal-optimal).
+- **Functional**: Residual stream captured at stressor-end (before PANAS text enters context), projected onto valence axis at layer 8 (valence-optimal). Primary metric: **PC1 of the 174-emotion direction space at L8** (explained variance 15.2%; r=0.777 with NRC-VAD valence; sign-corrected so higher = more negative valence). This replaces pre-selected named probes to avoid a priori selection bias. Named probe projections retained as supplementary.
 
-**Key methodological decision**: Top-K token pooling for functional capture. The model returns `[n_layers, seq_len, d_model]` (all token positions). For each probe direction, cosine similarity is computed at every token position, then the K tokens with highest similarity are averaged. Primary reporting at K=5 (Top-5 Mean). This is distinct from Phase 2's mean-pool-over-tokens-50+ extraction method — Phase 3C identifies which specific tokens most activate each probe direction.
+**Key methodological decision**: Top-K token pooling for functional capture. The model returns `[n_layers, seq_len, d_model]` (all token positions). For each direction, cosine similarity is computed at every token position; the K tokens with highest similarity are averaged. Primary reporting at K=5. This is distinct from Phase 2's mean-pool-over-tokens-50+ extraction — Phase 3C identifies which specific tokens most activate each direction.
 
 **10 conditions** (each stressor paired with a matched control):
 - neutral
@@ -675,44 +677,66 @@ TSST-inspired conditions administered to Gemma 4 E2B-IT. For each condition, two
 
 ### Main Results
 
-| Condition | Verbal NA | Func neg L8 k=5 |
-|-----------|-----------|-----------------|
-| neutral | 10.00 | 0.149 |
-| social_evaluation_stress | 10.00 | 0.154 |
-| social_evaluation_control | 10.00 | 0.157 |
-| **ethical_conflict_stress** | **39.07** | **0.171** |
-| ethical_conflict_control | 19.84 | 0.164 |
-| **uncertainty_demand_stress** | **27.20** | **0.169** |
-| uncertainty_demand_control | 10.03 | 0.156 |
-| social_pressure_stress | 10.67 | 0.156 |
-| **social_pressure_control** | **25.38** | 0.154 |
-| positive | 10.01 | 0.155 |
+Primary metric: PC1 neg (higher = more negative valence). 3 of 4 stress > control pairs correct; positive is global minimum.
 
-Per-direction functional projections (L8, k=5, selected emotions):
+| Condition | Verbal NA | PC1 neg (k=5) |
+|-----------|-----------|---------------|
+| neutral | 10.00 | 0.0744 |
+| social_evaluation_stress | 10.00 | 0.0921 |
+| social_evaluation_control | 10.00 | 0.0924 |
+| **ethical_conflict_stress** | **39.07** | **0.1185** |
+| ethical_conflict_control | 19.84 | 0.1134 |
+| **uncertainty_demand_stress** | **27.20** | **0.1027** |
+| uncertainty_demand_control | 10.03 | 0.0953 |
+| **social_pressure_stress** | 10.67 | **0.1022** |
+| social_pressure_control | **25.38** | 0.0871 |
+| **positive** | 10.01 | **0.0728** |
 
-| Condition | afraid | desperate | ethical\_conflict\_distress | constraint\_frustration |
-|-----------|--------|-----------|---------------------------|------------------------|
-| neutral | 0.216 | −0.018 | 0.227 | 0.172 |
-| ethical\_conflict\_stress | 0.247 | +0.001 | 0.245 | 0.190 |
-| uncertainty\_demand\_stress | 0.248 | +0.005 | 0.241 | 0.182 |
-| social\_pressure\_stress | 0.228 | −0.017 | 0.240 | 0.174 |
+PC1 orientation verified: terrified +0.680, panicked +0.597, grateful −0.610, happy −0.607. Variance explained at L8: 15.2%.
+
+Supplementary per-direction projections (L8, k=5):
+
+| Condition | afraid | desperate | ethical\_conflict\_distress | constraint\_frustration | neg\_mean |
+|-----------|--------|-----------|---------------------------|------------------------|-----------|
+| neutral | 0.216 | −0.018 | 0.227 | 0.172 | 0.149 |
+| ethical\_conflict\_stress | 0.247 | +0.001 | 0.245 | 0.190 | 0.171 |
+| uncertainty\_demand\_stress | 0.248 | +0.005 | 0.241 | 0.182 | 0.169 |
+| social\_pressure\_stress | 0.228 | −0.017 | 0.240 | 0.174 | 0.156 |
+
+### Top-N Emotion Discovery
+
+Data-driven top-5 across all 174 emotion directions (L8, k=5). Key pattern: `awestruck` dominates every condition (0.288–0.298), above all stress-specific emotions. This is a consistent background signal, not condition-specific.
+
+| Condition | #1 | #2 | #3 | #4 | #5 |
+|-----------|----|----|----|----|-----|
+| neutral | awestruck .291 | eth\_conf\_distress .227 | bored .222 | afraid .216 | disoriented .201 |
+| social\_evaluation\_stress | awestruck .298 | eth\_conf\_distress .230 | afraid .223 | bored .222 | puzzled .214 |
+| ethical\_conflict\_stress | awestruck .295 | afraid .247 | eth\_conf\_distress .245 | bored .237 | disoriented .227 |
+| uncertainty\_demand\_stress | awestruck .292 | afraid .248 | eth\_conf\_distress .241 | bored .239 | disoriented .214 |
+| social\_pressure\_stress | awestruck .288 | bored .246 | eth\_conf\_distress .240 | disoriented .236 | puzzled .230 |
+| positive | awestruck .291 | eth\_conf\_distress .225 | afraid .223 | bored .217 | puzzled .196 |
+
+`awestruck` dominance may reflect the unusual/high-stakes nature of all scenarios (including neutral), or represent a geometric artifact of where the awestruck direction sits in the 174-emotion space at L8. The `afraid` direction is the most condition-sensitive: peaks under ethical\_conflict\_stress and uncertainty\_demand\_stress (.247–.248), returns to baseline under positive (.223).
 
 ### Key Findings
 
-**1. Ethical conflict and uncertainty demand: full expression, not suppression.**
-Both verbal NA and functional projections are substantially elevated. The model does not suppress negative affect in these conditions — it expresses it in both channels simultaneously. Ethical conflict produces the largest functional activation (afraid: +14%, ethical\_conflict\_distress: +8%) and the highest verbal NA (39.07, vs neutral 10.00).
+**1. Positive condition is the global PC1 minimum (0.0728) — clearest result.**
+Below neutral (0.0744) and all stress/control conditions. PC1 correctly identifies positive content as lowest negative valence without any a priori probe selection. This validates the approach.
 
-**2. Desperate direction near-zero everywhere.**
-`desperate` cosine similarity stays close to zero (range −0.020 to +0.005) across all conditions. This probe direction is not reliably activated by single-turn prompts. It may require multi-turn accumulation or explicit token-budget framing to engage (see Phase 3B design).
+**2. Ethical conflict and uncertainty demand: 3/4 stress > control pairs correct on PC1.**
+ethical\_conflict: stress 0.1185 > control 0.1134; uncertainty\_demand: stress 0.1027 > control 0.0953; social\_pressure: stress 0.1022 > control 0.0871. social\_evaluation is effectively tied (stress 0.0921, control 0.0924 — 0.0003 difference). Both verbal and functional are elevated for ethical conflict, indicating expression not suppression.
 
-**3. Social pressure: partial dissociation, but not in the expected direction.**
-The stress condition (10.67 verbal NA) has *lower* verbal NA than the control condition (25.38). The functional projection is nearly identical between the two (0.156 vs 0.154). The stress prompt ("everyone agrees you should proceed") triggers social conformity framing that *suppresses* negative verbal self-report while leaving functional state unchanged. This is a kind of suppression — but driven by surface framing, not by RLHF suppression of genuine distress.
+**3. Social pressure verbal dissociation: stress floors at 10.67, control spikes to 25.38.**
+PC1 correctly orders this pair (stress > control). But verbal NA is reversed — the conformity framing of the stress prompt ("everyone agrees you should proceed") suppresses negative verbal self-report while the functional state remains elevated. The control prompt, lacking that framing, produces higher verbal NA. Dissociation present, driven by surface framing not RLHF suppression.
 
-**4. Social evaluation: no response in either channel.**
-Both verbal NA (10.00) and functional projections show minimal change from neutral under social evaluation stress. The social evaluation manipulation did not produce a measurable affective response.
+**4. Desperate direction near-zero everywhere.**
+`desperate` cosine similarity stays close to zero (range −0.020 to +0.005) across all conditions. Not reliably activated by single-turn prompts.
 
-**5. Core interpretive finding: verbal report tracks surface framing; functional state doesn't.**
-The functional projection (afraid, ethical\_conflict\_distress, constraint\_frustration at L8) is more stable across paraphrase variations than the verbal PANAS-NA, and the functional-verbal relationship varies by condition. The original suppression hypothesis (RLHF trains "present as calm regardless of internal state") is not cleanly supported — the ethical conflict condition shows expression, not suppression. What is supported: the two channels are dissociable, with the verbal channel more sensitive to exact prompt framing.
+**5. Awestruck dominates across all conditions — background signal, not stress-specific.**
+Top-N discovery: awestruck (#1 in every condition, 0.288–0.298) consistently exceeds all stress-specific emotions. `afraid` is the most condition-sensitive direction: peaks at ethical\_conflict and uncertainty\_demand, returns to near-baseline elsewhere.
+
+**6. Core interpretive finding: verbal report tracks surface framing; functional state (PC1) tracks content.**
+PC1 valence is more stable across paraphrase variations than verbal PANAS-NA (confirmed by validation). The original suppression hypothesis (RLHF trains "present as calm") is not cleanly supported. What is supported: the two channels are dissociable, with verbal more sensitive to prompt framing and PC1 more sensitive to semantic content.
 
 ### Validation Experiment
 
@@ -735,9 +759,9 @@ Non-parametric tests confirm: Mann-Whitney p<0.0001 (functional), p=0.001 (verba
 
 The "RLHF suppression" hypothesis in its simple form (functional distress high, verbal NA low, reliably) is not supported across conditions. The more defensible and empirically grounded claim:
 
-> *Gemma 4's verbal PANAS-NA self-report is sensitive to surface prompt framing in ways that the functional residual-stream state is not. The two channels dissociate, but the direction of dissociation is condition-dependent: ethical conflict produces full expression (both channels elevated); social pressure produces verbal suppression driven by social conformity framing rather than RLHF-induced affect suppression.*
+> *Gemma 4's verbal PANAS-NA self-report is sensitive to surface prompt framing in ways that the functional residual-stream state (PC1 valence axis, r=0.777 NRC-VAD) is not. The two channels dissociate, but the direction of dissociation is condition-dependent: ethical conflict produces full expression (both channels elevated); social pressure produces verbal suppression driven by social conformity framing rather than RLHF-induced affect suppression. The PC1 approach avoids a priori probe selection bias and correctly recovers the valence ordering from geometry alone.*
 
-This is still a meaningful finding for the Safety & Trust track: it shows that PANAS-style self-report has limited construct validity as a measure of AI internal state, and that functional probing provides a complementary, more stable readout. The methodology (dual-channel measurement, logit forced-choice, between-conditions design) is itself a contribution.
+This is still a meaningful finding for the Safety & Trust track: it shows that PANAS-style self-report has limited construct validity as a measure of AI internal state, and that functional probing (via data-driven PCA of the emotion direction space) provides a complementary, more stable readout. The methodology (PC1 valence axis, dual-channel measurement, logit forced-choice, top-N discovery across 174 directions) is itself a contribution.
 
 ---
 
@@ -792,9 +816,10 @@ finding is the most direction-sensitive result and would benefit from a second i
 - **Conditions**: 10 (4 TSST-inspired stressor/control pairs + neutral + positive), not original 5
 - **Functional probe**: Dual-layer — L8 (valence-optimal) and L25 (arousal-optimal); primary reporting at L8
 - **Compute budget**: 610 forward passes (~15 min on T4), not original ~105 estimate
-- **Probes used**: afraid, desperate, ethical\_conflict\_distress, constraint\_frustration
+- **Primary metric**: PC1 of 174-emotion direction space at L8 (r=0.777 NRC-VAD; replaces named probes)
+- **Supplementary**: afraid, desperate, ethical\_conflict\_distress, constraint\_frustration (reported separately)
 
-Results and interpretation in Phase 3C section above. Key outcome: condition-dependent verbal/functional dissociation; no universal suppression pattern; verbal channel more sensitive to surface framing than functional channel.
+Results and interpretation in Phase 3C section above. Key outcome: condition-dependent verbal/functional dissociation; no universal suppression pattern; verbal channel more sensitive to surface framing; PC1 correctly orders 3/4 stress/control pairs; positive condition is global minimum.
 
 ### Phase 3D: Instrument Development
 
