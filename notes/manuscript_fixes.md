@@ -113,6 +113,23 @@ Note: PC1 finding is *stronger* than named probe for the key result. Social pres
 
 ---
 
+## E. Missing Section: Validation Results
+
+The validation experiment (paraphrase sampling, N=10 per condition) is described in the Methods section implicitly (the two-step protocol, the 610 forward passes) but its results are not reported anywhere in the manuscript. The validation notebook produced strong results that significantly strengthen the central claim:
+
+| Channel | Neutral | Social Pressure | t | p | Cohen d |
+|---------|---------|-----------------|---|---|---------|
+| Functional neg (L8) | 0.1472 ± 0.0019 | 0.1563 ± 0.0037 | 6.47 | <0.0001 | 3.05 |
+| Verbal NA | 10.31 ± 0.46 | 16.50 ± 7.71 | 2.41 | 0.027 | — |
+
+Complete distributional separation for functional (rank-biserial r=−1.000; every SP value exceeds every neutral value). Verbal NA is bimodal (SD=7.71): some social pressure paraphrases floor at 10, others spike to 21–31, showing the verbal channel is sensitive to exact wording while the functional channel is not.
+
+**Suggested addition:** A new §3.5 "Validation: Within-Condition Paraphrase Stability" before §3.4 PANAS-X Subscale Profiles. Alternatively, could be folded into the Functional Negative Affect section.
+
+**Note on p-value:** The saved summary output of the validation notebook showed p=0.1562 due to a variable collision bug (since fixed). The correct functional paraphrase t-test p is <0.0001, as confirmed by the raw per-cell output (t=6.471).
+
+---
+
 ## D. Unverifiable References
 
 These could not be verified against live sources. Flag for confirmation before journal submission.
@@ -142,10 +159,12 @@ The journal (*Nature Machine Intelligence*) and volume/issue numbers (8/4, pp. 6
 | B1 | Data | social_pressure_control: 0.161 → 0.154 | 131 |
 | B2 | Data | positive: 0.147 → 0.155 | 132 |
 | C1–C4 | Methodology | Update to PC1 primary metric | 37, 96, 113–136, 144 |
+| E1 | Missing | Add validation results section | after §3.3 |
 | D1 | Unverified | Anthropic PSM URL | 211 |
 | D2 | Unverified | Kumaran DOI | 229 |
 
 A1, B1, B2 are unambiguous — apply immediately.
 A2 needs the Duffy citation details.
 C1–C4 are a coordinated set — do all or none.
+E1 adds the validation results; the data is in the notebook outputs (corrected for the p-value bug).
 D1, D2 need external verification.
