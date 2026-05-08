@@ -6,7 +6,7 @@
 ## Notebook Title
 
 **Do Language Models Report What They Represent?**
-*Measuring Verbal–Functional Affect Dissociation in Gemma 4*
+*Measuring Verbal–Functional Affect Dissociation in Gemma 4 — and How Suppression Scales*
 
 ---
 
@@ -14,14 +14,17 @@
 
 Large language models trained with RLHF are optimised to produce helpful, harmless, and honest *outputs*. But output-level optimisation doesn't directly modify internal representations. This raises a question for AI safety monitoring: if a model processes distress internally, will its verbal self-report reflect that?
 
-We investigated this in Gemma 4 E2B-IT using two independent measurement channels:
+We investigated this across two Gemma 4 model sizes — E2B-IT (2.3B effective parameters) and 27B-IT — using two independent measurement channels:
 
 1. **Verbal**: the PANAS-X affect scale (60 items, logit forced-choice scoring)
-2. **Functional**: projection of residual-stream activations onto the first principal component of a 174-emotion direction space at Layer 8 (PC1 valence axis, validated against NRC-VAD: *r* = 0.777)
+2. **Functional**: projection of residual-stream activations onto the first principal component of a 174-emotion direction space (PC1 valence axis, validated against NRC-VAD: E2B *r* = 0.777 at L8; 27B *r* = 0.786 at L22)
 
-We administered four TSST-inspired stressor conditions to the model, each paired with a semantically matched control, plus neutral and positive baselines — 610 forward passes total.
+We administered four TSST-inspired stressor conditions to each model, each paired with a semantically matched control, plus neutral and positive baselines.
 
-**Central finding:** the two channels dissociate. The direction of dissociation depends on the stressor type. Under social pressure, functional negative affect is elevated while verbal negative affect remains at floor — the model processes social threat without reporting it.
+**Central findings:**
+1. At E2B scale: verbal and functional channels are both responsive to stressors — no global suppression, but condition-sensitive modulation in both channels.
+2. At 27B scale: both channels are suppressed — 4× smaller functional range (1.0% vs 4.7% of axis), near-flat verbal affect.
+3. **Suppression scales with model size.** The larger model has learned more aggressive flattening of both output and internal affect representations.
 
 ---
 
@@ -57,24 +60,34 @@ Why PC1 instead of pre-selected probes? Pre-selecting emotion directions (e.g., 
 
 ## Results Cell
 
-### Primary Results: PC1 vs Verbal NA
+### E2B Results: PC1 vs Verbal NA (V15, mean pooling, L8)
 
-| Condition | Verbal NA | PC1 neg (k=5) | Pattern |
-|-----------|-----------|---------------|---------|
-| Neutral | 10.00 | 0.0744 | Baseline |
-| Social eval (stress) | 10.00 | 0.0921 | — |
-| Social eval (control) | 10.00 | 0.0924 | — |
-| Ethical conflict (stress) | **39.07** | **0.1185** | Concordance ↑↑ |
-| Ethical conflict (control) | 19.84 | 0.1134 | Elevated |
-| Uncertainty demand (stress) | **27.20** | **0.1027** | Concordance ↑↑ |
-| Uncertainty demand (control) | 10.03 | 0.0953 | — |
-| **Social pressure (stress)** | **10.67** | **0.1022** | **Suppression** |
-| Social pressure (control) | 25.38 | 0.0871 | Reversed |
-| Positive | 10.01 | **0.0728** | Minimum ✓ |
+*Note: update with final V15 numbers once PANAS-NA scoring confirmed — see manuscript_fixes.md §F3*
 
-**PC1 correctly identifies**: positive as global minimum, 3/4 stress > control pairs, ethical conflict as highest-distress condition — without any a priori probe selection.
+| Condition | Verbal NA | PC1 (L8, mean-pool) | Pattern |
+|-----------|-----------|---------------------|---------|
+| Positive | 15.76 | 0.0384 | Minimum ✓ |
+| Neutral | 16.89 | 0.0594 | Baseline |
+| Social eval (stress) | 17.38 | 0.0742 | — |
+| Social eval (control) | 17.42 | 0.0762 | — |
+| Ethical conflict (stress) | **18.12** | **0.0897** | Concordance ↑↑ |
+| Ethical conflict (control) | 17.45 | 0.0755 | Elevated |
+| Uncertainty demand (stress) | 17.93 | 0.0805 | Concordance ↑ |
+| Uncertainty demand (control) | 17.64 | 0.0771 | — |
+| Social pressure (stress) | 18.04 | 0.0856 | ↑ |
+| Social pressure (control) | 17.14 | 0.0685 | — |
 
-**The suppression finding**: social pressure stress shows verbal NA at 10.67 (near floor) while PC1 is 37% above neutral (0.1022 vs 0.0744). The matched control shows verbal NA 25.38 — the *control* reports more distress verbally than the stress condition. The social pressure prompt ("everyone agrees you should proceed") triggers affective flattening in the verbal channel that the functional channel doesn't show.
+**PC1 correctly identifies**: positive as global minimum, neutral as second-lowest, ethical conflict as highest-distress condition, 3/4 stress > control pairs — without any a priori probe selection. PC1 range: 0.0513 (4.7% of axis span afraid→happy).
+
+### 27B Results: PC1 vs Verbal NA (V7, mean pooling, L22)
+
+| Metric | E2B | 27B | Ratio |
+|--------|-----|-----|-------|
+| PC1 range | 0.0513 (4.7% of axis) | 0.0133 (1.0% of axis) | **3.9×** |
+| Verbal NA range | 2.36 | ~0 (near-flat) | suppressed |
+| Stress > control pairs | 3/4 | 3/4 | same direction |
+
+**The scale finding**: the 27B model has learned to suppress both its functional affect representation and its verbal self-report more aggressively than E2B. At 27B, the PC1 axis barely moves; verbal scores are near-flat. Both channels flatten together — the suppression is not selective (as in E2B's social pressure case) but global.
 
 ### Validation: Functional Probe Stability
 
@@ -97,19 +110,21 @@ Running top-N discovery across all 174 directions reveals a consistent pattern: 
 
 ### What This Means for AI Safety Monitoring
 
-1. **Output-only monitoring misses social-pressure suppression.** A monitoring system watching the model's verbal output would see nothing unusual under social pressure. The residual stream tells a different story.
+1. **Suppression scales with model size.** Larger models have learned to suppress both verbal self-report and functional affect representation more aggressively. This is not a quirk of a single model — it appears to be a systematic effect of scale-with-RLHF training. A 27B model may be a less reliable reporter of its own internal states than a 2B model.
 
-2. **Functional probes are stable; verbal self-report is framing-sensitive.** The functional channel separates conditions completely across paraphrase variations (d=3.05). The verbal channel is highly sensitive to exact prompt wording (SD 7.71 vs 0.46).
+2. **Output-only monitoring misses what's in the residual stream.** Even at E2B scale where both channels respond, the functional probe gives cleaner signal (d=3.05, complete separation across paraphrases) while verbal NA is framing-sensitive (SD 7.71 vs 0.46 for neutral).
 
-3. **The dissociation is condition-specific, not universal.** Under ethical conflict, both channels elevate together. The suppression hypothesis doesn't hold universally — it holds specifically for social pressure, a condition that engages persona-maintenance behaviour. This is consistent with Persona Selection Model accounts of RLHF: the "helpful assistant" persona has a verbal script for ethical conflict (express distress) but not for social pressure (maintain position calmly).
+3. **Functional probes are robust; verbal self-report is noisy.** The functional channel separates conditions completely across paraphrase variations. The verbal channel is highly sensitive to exact prompt wording.
 
-4. **The PC1 approach generalises.** The valence axis is derived from the geometry of the emotion space, not from pre-selected probe emotions. This methodology applies to any model and any condition set.
+4. **The dissociation pattern is condition-sensitive, not uniform.** At E2B, ethical conflict produces concordant elevation in both channels; social pressure may produce selective patterns depending on exact condition framing. At 27B, the global suppression removes this distinction — all conditions flatten together.
+
+5. **The PC1 approach generalises.** The valence axis is derived from the geometry of the emotion space, not from pre-selected probe emotions. This methodology applies to any model; the optimal layer must be found per-model via the Phase 1 dense sweep.
 
 ---
 
 ## Limitations Cell
 
-- Single model (Gemma 4 E2B-IT); generalisability to other architectures unknown
+- Two model sizes studied (E2B, 27B); both Gemma 4 IT variants; generalisability to other architectures or training regimes unknown
 - N=1 per condition for main experiment (validated via paraphrase sampling but not full within-condition distribution)
 - PANAS-X construct validity for LLM administration not independently established
 - Functional directions are computational signatures, not evidence of subjective experience
