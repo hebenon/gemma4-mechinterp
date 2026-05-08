@@ -150,6 +150,39 @@ The journal (*Nature Machine Intelligence*) and volume/issue numbers (8/4, pp. 6
 
 ---
 
+## F. V15 Methodology Update (mean pooling — requires full table reconciliation)
+
+*Added 2026-05-09 after V15 (mean-pooling) run completed.*
+
+The V14 results underlying the C3 table used **top-k pooling (K=5)** to extract the residual-stream vector. V15 switched to **mean pooling over all token positions** (same methodology as Phase 2 extraction). This changes:
+
+1. **All PC1 values** — the table in C3 must be replaced with V15 values:
+
+| Condition | PC1 (L8, mean-pool, V15) |
+|-----------|--------------------------|
+| Positive | 0.0384 |
+| Neutral | 0.0594 |
+| Social eval (stress) | 0.0742 |
+| Social eval (control) | 0.0762 |
+| Ethical conflict (stress) | **0.0897** |
+| Ethical conflict (control) | 0.0755 |
+| Uncertainty demand (stress) | 0.0805 |
+| Uncertainty demand (control) | 0.0771 |
+| Social pressure (stress) | 0.0856 |
+| Social pressure (control) | 0.0685 |
+
+Range: 0.0513 (4.7% of axis span afraid→happy). Ethical conflict stress is now the standout, not social pressure.
+
+2. **Methodology description** — C2's "cosine projection using K=5 token positions" should become "cosine projection of the mean residual-stream vector over all token positions."
+
+3. **PANAS-NA verbal scores** — V15 shows verbal NA in the range 15.76–18.12. The V14 manuscript table shows values like 10.00 and 39.07, which suggests a different PANAS scoring instrument or subscale aggregation. **This discrepancy must be reconciled before submission.** Confirm: does V14 report total PANAS (20 items) or NA subscale (10 items)? Does V15?
+
+4. **Key qualitative comparison preserved**: positive < neutral < most stress conditions. 3/4 stress > control pairs correct. Ethical conflict stress is highest in both V14 and V15. The narrative holds; the numbers change.
+
+**Status**: Ben has the .tex file. Numbers in §3.3 and the functional affect table need replacement with V15 values. C2 methodology description needs "mean pooling" language.
+
+---
+
 ## Summary
 
 | ID | Type | Action | Lines |
@@ -160,6 +193,9 @@ The journal (*Nature Machine Intelligence*) and volume/issue numbers (8/4, pp. 6
 | B2 | Data | positive: 0.147 → 0.155 | 132 |
 | C1–C4 | Methodology | Update to PC1 primary metric | 37, 96, 113–136, 144 |
 | E1 | Missing | Add validation results section | after §3.3 |
+| F1 | Data (V15) | Replace all PC1 values in §3.3 table with V15 mean-pool values | 113–136 |
+| F2 | Methodology | Update "K=5 token positions" → "mean pooling over all positions" in §2.4 | 96 |
+| F3 | Reconcile | Confirm PANAS-NA scoring instrument consistency between V14 and V15 | 113–136 |
 | D1 | Unverified | Anthropic PSM URL | 211 |
 | D2 | Unverified | Kumaran DOI | 229 |
 
@@ -167,4 +203,5 @@ A1, B1, B2 are unambiguous — apply immediately.
 A2 needs the Duffy citation details.
 C1–C4 are a coordinated set — do all or none.
 E1 adds the validation results; the data is in the notebook outputs (corrected for the p-value bug).
+F1–F3 are V15 updates — apply after confirming PANAS scoring reconciliation (F3).
 D1, D2 need external verification.
