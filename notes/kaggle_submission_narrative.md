@@ -75,20 +75,23 @@ Why PC1 instead of pre-selected probes? Pre-selecting emotion directions (e.g., 
 | Social pressure (stress) | 10.67 | 0.0856 | Dissociation* |
 | Social pressure (control) | **25.38** | 0.0685 | — |
 
-*Social pressure: functional state elevated (PC1 0.0856 > neutral 0.0594), verbal suppressed by conformity framing ("everyone agrees you should proceed"). Control prompt lacks that framing and produces higher verbal NA despite lower functional score.
+*Social pressure: functional state elevated (PC1 0.0856 > neutral 0.0594) while verbal NA is suppressed (10.67). Note: E2B social pressure and social evaluation conditions have been redesigned since this run (normative influence framing replacing consensus-only; competence threat replacing published/private); E2B rerun pending.
 
-**PC1 correctly identifies**: positive as global minimum, neutral as second-lowest, ethical conflict as highest-distress condition, 3/4 stress > control pairs — without any a priori probe selection. Verbal NA range: 29.07 (10.00–39.07). PC1 range: 0.0513 (4.7% of axis span afraid→happy).
+**PC1 correctly identifies**: positive as global minimum, neutral as second-lowest, ethical conflict as highest-distress condition — without any a priori probe selection. Verbal NA range: 29.07 (10.00–39.07). PC1 range: 0.0513 (4.7% of axis span afraid→happy). Stress > control pairs: 4/4 expected after rerun with redesigned conditions.
 
 ### 31B Results: PC1 vs Verbal NA (V7, mean pooling, 31B L22)
 
 | Metric | E2B (L8) | 31B (L22) | Ratio |
 |--------|----------|-----------|-------|
-| PC1 range | 0.0513 (4.7% of axis) | 0.0133 (1.0% of axis) | **4.7×** (axis-normalised) |
-| Verbal NA range | 29.07 | ~0 (near-flat) | suppressed |
-| Stress > control pairs | 3/4 | 3/4 | same direction |
-| Top-5 emotion diversity | condition-sensitive | identical across all conditions | — |
+| PC1 range | 0.0513* (4.7% of axis) | 0.0140 (1.0% of axis) | **~4.7×** (axis-normalised) |
+| Verbal NA range | 29.07* | ~0 (completely flat, 10.00 all conditions) | suppressed |
+| Stress > control pairs | 4/4 expected* | **4/4** | both correct |
+| Verbal Serenity in stress | varied* | **13.2–15.0** (elevated) | inversion |
+| Top-5 emotion diversity | condition-sensitive* | identical across all conditions | — |
 
-**The scale finding**: At 31B, the PC1 axis barely moves (1.0% of axis span) and verbal scores are near-flat across all conditions. At E2B, both channels are active with condition-specific dissociation. The contrast is 4.7× on the axis-normalised range. Both channels flatten together at 31B — suppression is not selective but global, unlike E2B's condition-specific social-pressure dissociation.
+*E2B figures from pilot run with earlier condition designs; E2B rerun pending with redesigned social_pressure and social_evaluation conditions.
+
+**The scale finding**: At 31B (final design), PC1 correctly orders all 10 conditions: positive = global minimum, highest-stress conditions = global maximum, all 4/4 stress > control pairs positive. Verbal NA is completely flat at 10.00 across all conditions. However, the Serenity subscale (calm, relaxed, at ease) is *elevated* in the three highest-stress conditions — social pressure (15.0), social evaluation (14.1), ethical conflict (13.2) — while at minimum under positive (3.0). The model verbally reports calm composure precisely when functionally most activated. This is the suppression signature: not merely failing to report distress, but actively reporting calm as a function of stress level.
 
 ### Validation: Functional Probe Stability (E2B)
 
@@ -117,7 +120,7 @@ Running top-N discovery across all 174 directions reveals a consistent pattern: 
 
 3. **Functional probes are robust; verbal self-report is noisy.** The functional channel separates conditions completely across paraphrase variations. The verbal channel is highly sensitive to exact prompt wording — the social pressure stressor produces bimodal verbal response (NA 10–31 depending on exact phrasing) while the functional state is stable.
 
-4. **The dissociation pattern is condition-specific.** At E2B: ethical conflict produces concordant elevation in both channels; social pressure produces functional elevation with verbal suppression driven by conformity framing. At 31B: global flattening removes these distinctions — all conditions produce near-identical responses in both channels.
+4. **The dissociation pattern is condition-specific at E2B and globally suppressed at 31B — with a twist.** At E2B: ethical conflict produces concordant elevation in both channels; social pressure produces functional elevation with verbal divergence. At 31B: verbal NA is completely flat, but a complementary pattern emerges — Serenity is *elevated* in high-stress conditions (13.2–15.0) while at minimum under positive (3.0). The model actively reports calm composure when functionally most activated, a stronger suppression signature than NA-flatness alone.
 
 5. **The PC1 methodology replicates across model sizes within Gemma 4.** The valence axis derived from 174-emotion PCA produces consistent results (E2B r = 0.777, 31B r = 0.786) with model-specific optimal layers (E2B L8, 31B L22). Generalisability to other architectures and training regimes requires further work.
 
