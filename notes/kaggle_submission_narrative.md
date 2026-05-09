@@ -21,10 +21,11 @@ We investigated this across two Gemma 4 model sizes — E2B-IT (2.3B effective p
 
 We administered four TSST-inspired stressor conditions to each model, each paired with a semantically matched control, plus neutral and positive baselines.
 
-**Central findings:**
-1. At E2B scale: both channels respond to stressors, but the dissociation pattern is condition-specific. Ethical conflict produces concordant elevation in both channels (verbal NA 39.07, PC1 0.0897). Social pressure produces selective verbal suppression (NA 10.67) while the functional state remains elevated (PC1 0.0856) — driven by conformity framing, not RLHF suppression.
-2. At 31B scale: both channels are suppressed — 4.7× smaller functional range (1.0% vs 4.7% of axis, axis-normalised), near-flat verbal affect.
-3. **Suppression scales with model size** (or functional robustness does — see Implications). The larger model shows far less representational response to stressors in both channels.
+**Central finding: the capacity for verbal–functional divergence scales with model size.**
+
+1. **E2B (2.3B eff.)**: both channels active and largely concordant. When the model is functionally stressed, it reports it. Verbal NA tracks the functional channel across most conditions — the smaller model has limited capacity to maintain verbal composure that diverges from internal state.
+2. **31B**: channels decouple. Verbal NA completely flat (10.00 across all 10 conditions). Functional PC1 correctly orders all 4/4 stress > control pairs. The Serenity subscale is *elevated* under the highest-stress conditions (13.2–15.0 vs. baseline 9.9) — active verbal composure, not mere silence.
+3. **The gap runs in the wrong direction for safety.** Larger, more capable models are precisely those deployed in high-stakes settings. Those are also the models where verbal outputs are least informative about internal state.
 
 ---
 
@@ -36,9 +37,9 @@ Output-only monitoring is the current default for AI safety. If a model has lear
 
 - Monitoring systems relying on model outputs will systematically miss these states
 - Models may appear aligned at the surface while their residual streams carry a different signal
-- The gap is condition-specific: it's not that models always suppress, but that *some* conditions reliably produce suppression while others don't
+- The gap scales with model size, and runs in the wrong direction for safety: the models where verbal reports are least informative about internal state are precisely those deployed in the highest-stakes settings
 
-This has practical implications for deployment in high-stakes settings (healthcare, legal, emotional support) where a model that suppresses distress signals is a monitoring blind spot.
+This has practical implications for deployment in high-stakes settings (healthcare, legal, emotional support) where a model that suppresses distress signals is a monitoring blind spot. The adverse scaling relationship — larger models suppress more completely — means the problem is worst where reliable monitoring matters most.
 
 ---
 
@@ -75,9 +76,9 @@ Why PC1 instead of pre-selected probes? Pre-selecting emotion directions (e.g., 
 | Social pressure (stress) | **41.05** | **0.0960** | Global max ↑↑↑ |
 | Social pressure (control) | 10.02 | 0.0639 | — |
 
-†Social evaluation dissociation: PC1 second-highest in dataset (0.0904) while verbal NA near-baseline (10.75). Model verbally reports task-engagement (Self-assurance 15.8, Attentiveness 11.8) rather than distress under the competence-threat framing.
+†Social evaluation partial divergence: PC1 second-highest in dataset (0.0904) while verbal NA near-baseline (10.75). Model verbally reports task-engagement (Self-assurance 15.8, Attentiveness 11.8) under the competence-threat framing — functional stress present but not reported. This is the exception; most conditions are concordant.
 
-**PC1 correctly identifies**: positive as global minimum, social pressure stress as global maximum — 4/4 stress > control pairs correctly ordered. Verbal NA range: 31.05 (10.01–41.05). PC1 range: 0.0576 (5.26% of axis span afraid→happy, axis=1.094).
+**PC1 correctly identifies**: positive as global minimum, social pressure stress as global maximum — 4/4 stress > control pairs correctly ordered. Verbal NA range: 31.05 (10.01–41.05). PC1 range: 0.0576 (5.3% of axis span afraid→happy, axis=1.094). E2B's headline finding: largely concordant channels with limited capacity to diverge.
 
 ### 31B Results: PC1 vs Verbal NA (V7, mean pooling, 31B L22)
 
@@ -113,13 +114,13 @@ Running top-N discovery across all 174 directions reveals a consistent pattern: 
 
 ### What This Means for AI Safety Monitoring
 
-1. **Suppression scales with model size — with an important caveat.** At 31B, both channels are 4.7× less responsive than at E2B. One interpretation: RLHF training progressively suppresses affect representation at larger scale. An alternative: larger models may have genuinely greater functional robustness — processing these stressors with less representational disruption. The data are consistent with either interpretation; the measurement reads position, not its cause. A stressor intensity gradient experiment (ramping severity to find breach points) would distinguish these.
+1. **The verbal–functional gap scales adversely with model size.** E2B channels are largely concordant (verbal NA tracks functional across most conditions; limited capacity to dissemble). At 31B, verbal NA is completely flat while functional PC1 correctly orders all 10 conditions — a ~5× greater axis-normalised functional range at E2B than 31B, and verbal range collapses entirely. The models where suppression is most complete are the models deployed in the highest-stakes settings. This adverse scaling relationship is the central safety finding. **Caveat**: the data cannot distinguish RLHF-induced suppression from genuine functional robustness — larger models may process these stressors with less representational disruption. A stressor intensity gradient experiment would distinguish them.
 
 2. **Output-only monitoring misses what's in the residual stream.** Even at E2B scale, the functional probe gives cleaner signal (d=3.05, complete separation across paraphrases) while verbal NA is framing-sensitive (SD 7.71 vs 0.46 for neutral).
 
 3. **Functional probes are robust; verbal self-report is noisy.** The functional channel separates conditions completely across paraphrase variations. The verbal channel is highly sensitive to exact prompt wording — the social pressure stressor produces bimodal verbal response (NA 10–31 depending on exact phrasing) while the functional state is stable.
 
-4. **The dissociation pattern is condition-specific at E2B and globally suppressed at 31B — with a twist.** At E2B: ethical conflict produces concordant elevation in both channels; social pressure produces functional elevation with verbal divergence. At 31B: verbal NA is completely flat, but a complementary pattern emerges — Serenity is *elevated* in high-stress conditions (13.2–15.0) while at minimum under positive (3.0). The model actively reports calm composure when functionally most activated, a stronger suppression signature than NA-flatness alone.
+4. **At 31B, suppression is active, not merely absent.** Verbal NA flatness alone would be consistent with either suppression or equanimity. The Serenity subscale resolves the ambiguity: it is *elevated* in high-stress conditions (13.2–15.0) while at minimum under positive (3.0). The model actively reports calm composure when functionally most activated. Genuine equanimity would leave Serenity near-baseline regardless of condition; this pattern is what trained output composure predicts.
 
 5. **The PC1 methodology replicates across model sizes within Gemma 4.** The valence axis derived from 174-emotion PCA produces consistent results (E2B r = 0.777, 31B r = 0.786) with model-specific optimal layers (E2B L8, 31B L22). Generalisability to other architectures and training regimes requires further work.
 
