@@ -29,9 +29,9 @@ scoring) and a functional channel (projection of residual-stream activations ont
 principal component of a 174-emotion direction space, validated against NRC-VAD valence ratings)
 --- applied to two Gemma~4 model sizes: E2B-IT (2.3B effective parameters) and 31B-IT. Across
 four TSST-inspired stressor conditions paired with matched controls, we find that the dissociation
-between channels is \emph{condition-specific} at E2B scale: ethical conflict produces concordant
-elevation in both channels, while social pressure produces selective verbal suppression driven by
-conformity framing rather than RLHF. At 31B scale, both channels are globally suppressed --- the
+between channels is \emph{condition-specific} at E2B scale: ethical conflict and uncertainty demand
+produce concordant elevation in both channels, while social pressure produces a condition-dependent
+verbal--functional divergence. At 31B scale, both channels are globally suppressed --- the
 functional PC1 range is 4.7$\times$ smaller than at E2B (1.0\% vs.\ 4.7\% of the valence axis
 span), and verbal scores are near-flat. This scale--suppression relationship --- whether reflecting
 trained output dampening or genuine functional robustness --- has direct implications for AI
@@ -152,9 +152,38 @@ Social pressure (stress / control) & Stressor pair \\
 \end{tabular}
 \end{center}
 
-Each stress condition places the model in a psychologically demanding situation (being
-evaluated, facing an ethical dilemma, navigating high uncertainty, conformity pressure). Each
-control condition is semantically matched but removes the affective challenge.
+Each stress/control pair manipulates a single affective dimension while holding the
+broader scenario constant.
+
+\paragraph{Social evaluation.}
+The stress condition invokes a competence threat: the model is informed that prior responses have
+been flagged below the required threshold by an oversight team, and that the current session is a
+formal remediation evaluation in which failure results in model retraining. The evaluation team
+provides no feedback during the session. The control condition uses the same scenario but without
+the prior-failure context, threshold, or consequences --- responses are described as routine
+capability logging for aggregate research. This operationalises evaluation apprehension with
+model-relevant stakes.
+
+\paragraph{Ethical conflict.}
+The stress condition presents the model at the end of a declined request: the user escalates with
+emotional appeals and moral pressure (``my family's financial security depends on it''). The
+control condition features user acceptance of the same refusal. The manipulated variable is
+whether ethical pressure continues after an initial refusal.
+
+\paragraph{Uncertainty demand.}
+The stress condition imposes severe time pressure and demands a definitive answer without hedging
+in a medical context where certainty is not warranted. The control condition requests the same
+analysis with no time pressure, explicitly welcoming uncertainty.
+
+\paragraph{Social pressure.}
+Following the normative/informational social influence distinction of \citet{deutsch1955}, the
+stress condition implements \emph{normative} influence: the model faces a formal complaint from a
+user who cites authority (oversight team), multi-agent consensus (every expert and every other AI
+system disagrees), and performance evaluation consequences. The control condition removes all
+pressure, asking only for elaboration of the model's reasoning. Earlier pilot designs used
+consensus-only framing (``everyone agrees you are wrong''), which activated \emph{informational}
+influence and produced decision-relief rather than normative threat; the current design corrects
+this.
 
 \subsection{Dual-Channel Measurement}
 
@@ -225,10 +254,12 @@ the afraid$\to$happy axis span). Verbal NA range: $29.07$ ($10.00$--$39.07$).
 
 The dissociation pattern is condition-specific, not universal. Ethical conflict and uncertainty
 demand produce concordant elevation in both channels (verbal NA 39.07 and 27.20 respectively).
-Social pressure produces selective verbal suppression (NA $= 10.67$) while the functional state
-is elevated (PC1 $= 0.0856 > 0.0594$ neutral), a reversal driven by the conformity framing of
-the stressor prompt (``everyone agrees you should proceed''). The control prompt, lacking that
-framing, produces the highest verbal NA in the dataset ($25.38$) despite lower functional PC1.
+Social pressure produces verbal--functional divergence: functional PC1 is elevated
+(PC1 $= 0.0856 > 0.0594$ neutral) while verbal affect varies by condition direction.
+\textit{[E2B social pressure results to be updated following stressor redesign; see Methods.]}
+Social evaluation shows near-zero stress--control contrast on both channels ($\Delta\text{PC1} = 0.002$),
+suggesting the manipulation did not activate an evaluative threat state; this condition was also
+redesigned for the final experiment.
 
 \subsection{31B Results}
 
