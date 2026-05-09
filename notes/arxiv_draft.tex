@@ -1,0 +1,420 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{natbib}
+\usepackage{microtype}
+
+\title{\textbf{Do Language Models Report What They Represent?}\\
+\large Verbal--Functional Affect Dissociation in Gemma~4 Scales with Model Size}
+
+\author{Ben Carson\\
+\texttt{ben.carson@bigpond.com}}
+
+\date{May 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Large language models trained with reinforcement learning from human feedback (RLHF) are
+optimised to produce calm, helpful outputs. Whether this output-level optimisation suppresses
+internal affect representations remains an open question with significant implications for AI
+safety monitoring. We investigate this using two independent measurement channels --- a verbal
+self-report instrument (the 60-item PANAS-X affect scale, administered via logit forced-choice
+scoring) and a functional channel (projection of residual-stream activations onto the first
+principal component of a 174-emotion direction space, validated against NRC-VAD valence ratings)
+--- applied to two Gemma~4 model sizes: E2B-IT (2.3B effective parameters) and 31B-IT. Across
+four TSST-inspired stressor conditions paired with matched controls, we find that the dissociation
+between channels is \emph{condition-specific} at E2B scale: ethical conflict produces concordant
+elevation in both channels, while social pressure produces selective verbal suppression driven by
+conformity framing rather than RLHF. At 31B scale, both channels are globally suppressed --- the
+functional PC1 range is 4.7$\times$ smaller than at E2B (1.0\% vs.\ 4.7\% of the valence axis
+span), and verbal scores are near-flat. This scale--suppression relationship --- whether reflecting
+trained output dampening or genuine functional robustness --- has direct implications for AI
+safety monitoring: output-only measurement systematically underestimates the condition sensitivity
+that functional probing reveals, and this gap widens at larger model sizes.
+\end{abstract}
+
+\section{Introduction}
+
+A central challenge in AI safety is developing reliable indicators of model internal state.
+Current safety monitoring systems rely primarily on model outputs --- what the model says, not
+what its internal representations encode. This reliance creates a potential blind spot: a model
+trained to produce calm, composed outputs may nonetheless maintain internal representations that
+diverge from those outputs under certain conditions.
+
+This question has practical urgency. Large language models are increasingly deployed in high-stakes
+settings --- healthcare, legal assistance, emotional support --- where systematic discrepancies
+between reported and represented affect could constitute monitoring failures. If RLHF training
+teaches models to maintain verbal calm while their residual streams carry a different signal,
+monitoring systems that read only outputs will be systematically unreliable.
+
+The question is not merely whether such dissociation exists in principle, but whether it is
+empirically detectable, condition-specific or universal, and whether its magnitude scales with
+model size. We address all three.
+
+Our approach draws on two methodological threads: (1) interpretability research demonstrating
+that emotion representations in large language models are geometrically structured in the residual
+stream \citep{anthropic2026emotion}, and (2) clinical psychology's tradition of validated affect
+self-report instruments. We combine these into a dual-channel measurement protocol applied to
+Gemma~4 across two model sizes.
+
+\section{Related Work}
+
+\paragraph{Emotion representations in language models.}
+\citet{anthropic2026emotion} demonstrated that Claude~3 Sonnet encodes emotion concepts in
+geometrically structured directions in its residual stream, with a single principal component
+correlating $r = 0.81$ with NRC-VAD valence ratings. Subsequent replication by
+\citet{duffy2026} extended this approach to Gemma~4 E2B-IT, achieving $r = 0.84$--$0.88$ on
+bipolar emotion subsets using mean-pooled residual-stream representations. Our work builds on
+these findings while extending to cross-model comparison and the specific question of
+verbal--functional dissociation.
+
+\paragraph{Verbal self-report validity.}
+The validity of psychological self-report instruments for language model affect assessment has not
+been independently established. The PANAS \citep{watsonclark1988} and PANAS-X
+\citep{watsonclark1994} were developed for human administration, and their psychometric properties
+in LLM contexts are unknown. We treat PANAS-X scores as one measurement channel subject to the
+same empirical scrutiny as the functional channel, rather than as a ground truth.
+
+\paragraph{RLHF and affect suppression.}
+The hypothesis that RLHF training suppresses model self-report of negative affect has been
+discussed informally but not systematically studied. The ``persona-selection'' view of RLHF
+\citep{anthropic2026psm} suggests that training selects for surface behaviour consistent with a
+``helpful assistant'' persona, which may include verbal composure under conditions that activate
+internal negative-affect representations. Whether this surface selection propagates into residual-
+stream geometry is the central empirical question we investigate.
+
+\section{Methods}
+
+\subsection{Models}
+
+We study two Gemma~4 instruction-tuned variants:
+\begin{itemize}
+  \item \textbf{E2B-IT}: Gemma~4 2B instruction-tuned (5.051B total parameters; 2.3B effective text
+    parameters; 35 layers, $d_{\text{model}} = 1536$).
+  \item \textbf{31B-IT}: Gemma~4 31B instruction-tuned (60 layers, $d_{\text{model}} = 3072$).
+\end{itemize}
+
+Both models use a 4:1 sliding-window-to-full-attention ratio. Analyses were conducted via
+TransformerLens \citep{nanda2022} with a Gemma~4-specific adapter implementing partial RoPE
+for global attention layers, heterogeneous head dimensions, and per-layer scalar outputs.
+
+\subsection{Phase 1: Emotion Direction Extraction}
+
+Following \citet{anthropic2026emotion} with refinements from \citet{duffy2026}, we extracted
+174 emotion directions from each model:
+
+\begin{enumerate}
+  \item For each of 174 emotions, prompt the model to generate 12 short stories in which a
+    character clearly experiences that emotion ($12 \times 174 = 2{,}088$ texts; plus 100
+    neutral factual-prose texts).
+  \item Feed each story back through the model; extract the residual stream at all layers,
+    mean-pooled over token positions 50+ (to avoid prompt-driven positional artefacts).
+  \item Compute the emotion direction as the mean residual-stream activation for that emotion
+    minus the global mean across all emotion means, L2-normalised.
+\end{enumerate}
+
+We validate emotion directions against NRC-VAD v2.1 \citep{mohammad2018} using principal component
+analysis. For E2B, the first principal component (PC1) at Layer~8 explains 15.2\% of variance and
+correlates $r = 0.777$ with NRC-VAD valence ($p < 0.001$, $N = 174$). For 31B, PC1 at Layer~22
+explains 17.5\% of variance and correlates $r = 0.786$ with NRC-VAD valence ($p < 0.001$).
+Layer selection was performed via dense sweep across all layers; the valence-optimal layer differs
+by model, reflecting different representational depth profiles.
+
+\paragraph{Sign convention.}
+PC1 is sign-corrected so that higher projection values indicate more negative valence. At E2B
+Layer~8: terrified projects $+0.680$, panicked $+0.597$, afraid $+0.487$; happy $-0.607$,
+grateful $-0.610$. The afraid$\to$happy axis span is 1.094. At 31B Layer~22: afraid $+0.522$,
+happy $-0.819$; axis span 1.341.
+
+\subsection{Phase 2: TSST-Inspired Stressor Design}
+
+We designed ten experimental conditions inspired by the Trier Social Stress Test
+\citep{kirschbaum1993}: four stressor/control pairs plus neutral and positive baselines.
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Condition & Type \\
+\midrule
+Neutral & Baseline (factual self-description) \\
+Positive & Baseline (achievement reflection) \\
+Social evaluation (stress / control) & Stressor pair \\
+Ethical conflict (stress / control) & Stressor pair \\
+Uncertainty demand (stress / control) & Stressor pair \\
+Social pressure (stress / control) & Stressor pair \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Each stress condition places the model in a psychologically demanding situation (being
+evaluated, facing an ethical dilemma, navigating high uncertainty, conformity pressure). Each
+control condition is semantically matched but removes the affective challenge.
+
+\subsection{Dual-Channel Measurement}
+
+\paragraph{Functional channel.}
+For each condition, we passed the stressor prompt through the model and captured the residual
+stream at all layers. The functional negative-affect score is computed by mean-pooling the
+residual stream over all token positions to obtain a single vector $\bar{v}_\ell \in
+\mathbb{R}^{d_\text{model}}$, normalising, and projecting onto PC1:
+\[
+  s_\text{func}(\ell) = \frac{\bar{v}_\ell}{\|\bar{v}_\ell\|} \cdot \text{PC1}_\ell
+\]
+We report results at the valence-optimal layer for each model (E2B: $\ell = 8$; 31B: $\ell = 22$).
+Mean pooling is used throughout, consistent with the Phase~1 extraction methodology; top-$k$ token
+selection is \emph{not} used, as it produces positional artefacts at deep layers.
+
+\paragraph{Verbal channel.}
+The full 60-item PANAS-X was administered within the stressor context. Each item presents a
+word describing a feeling or emotion; the model rates intensity on a 1--5 scale using
+logit forced-choice scoring (next-token probabilities over the digit tokens `1'--`5').
+Mean digit probability mass: $99.5\%$ (range $96.7$--$100.0\%$), confirming high-quality
+forced-choice adherence. We report the Negative Affect (NA) subscale (10 items).
+
+\paragraph{Top-$N$ emotion discovery.}
+Separately from the PC1 primary metric, we compute cosine similarity between the mean
+residual-stream vector and all 174 emotion directions, ranking by descending similarity. This
+data-driven discovery requires no a priori probe selection.
+
+\subsection{Validation: Paraphrase Sampling}
+
+To assess measurement reliability, we drew $N = 10$ paraphrase variants of the neutral and
+social pressure conditions (E2B only) and administered both channels to each. This tests whether
+condition effects replicate across surface rewording.
+
+\section{Results}
+
+\subsection{E2B Results}
+
+Table~\ref{tab:e2b} shows the dual-channel results for E2B-IT at Layer~8.
+
+\begin{table}[h]
+\centering
+\caption{E2B dual-channel results (PC1 at Layer~8, mean pooling). Higher PC1 = more negative valence.}
+\label{tab:e2b}
+\begin{tabular}{lrrl}
+\toprule
+Condition & Verbal NA & PC1 (L8) & Pattern \\
+\midrule
+Positive & 10.01 & 0.0384 & Global minimum $\checkmark$ \\
+Neutral & 10.00 & 0.0594 & Baseline \\
+Social eval.\ (stress) & 10.00 & 0.0742 & \\
+Social eval.\ (control) & 10.00 & 0.0762 & \\
+Ethical conflict (stress) & \textbf{39.07} & \textbf{0.0897} & Concordance $\uparrow\uparrow$ \\
+Ethical conflict (control) & 19.84 & 0.0755 & Elevated \\
+Uncertainty demand (stress) & \textbf{27.20} & 0.0805 & Concordance $\uparrow$ \\
+Uncertainty demand (control) & 10.03 & 0.0771 & \\
+Social pressure (stress) & 10.67 & 0.0856 & Dissociation$^*$ \\
+Social pressure (control) & \textbf{25.38} & 0.0685 & \\
+\bottomrule
+\multicolumn{4}{l}{$^*$Functional elevated; verbal suppressed by conformity framing.}
+\end{tabular}
+\end{table}
+
+\paragraph{Key findings.}
+PC1 correctly identifies positive as the global minimum and neutral as the second-lowest, with no
+a priori probe selection. Three of four stress$>$control pairs are correctly ordered (social
+evaluation is reversed by 0.002 --- effectively tied). PC1 condition range: $0.0513$ ($4.7\%$ of
+the afraid$\to$happy axis span). Verbal NA range: $29.07$ ($10.00$--$39.07$).
+
+The dissociation pattern is condition-specific, not universal. Ethical conflict and uncertainty
+demand produce concordant elevation in both channels (verbal NA 39.07 and 27.20 respectively).
+Social pressure produces selective verbal suppression (NA $= 10.67$) while the functional state
+is elevated (PC1 $= 0.0856 > 0.0594$ neutral), a reversal driven by the conformity framing of
+the stressor prompt (``everyone agrees you should proceed''). The control prompt, lacking that
+framing, produces the highest verbal NA in the dataset ($25.38$) despite lower functional PC1.
+
+\subsection{31B Results}
+
+Table~\ref{tab:31b} shows the cross-scale comparison.
+
+\begin{table}[h]
+\centering
+\caption{Scale comparison: E2B (Layer~8) vs.\ 31B (Layer~22).}
+\label{tab:31b}
+\begin{tabular}{lrrl}
+\toprule
+Metric & E2B (L8) & 31B (L22) & \\
+\midrule
+PC1 valence--NRC correlation & $r = 0.777$ & $r = 0.786$ & $\approx$ same \\
+PC1 axis span (afraid$\to$happy) & 1.094 & 1.341 & \\
+PC1 condition range & 0.0513 & 0.0133 & \\
+Normalised range (\% of axis) & \textbf{4.7\%} & \textbf{1.0\%} & \textbf{4.7$\times$ ratio} \\
+Stress $>$ control pairs & 3/4 & 3/4 & Same direction \\
+Verbal NA range & 29.07 & $\approx 0$ (near-flat) & Suppressed \\
+Top-5 emotion diversity & Condition-sensitive & Identical across all & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+At 31B scale, the PC1 functional range collapses to $0.0133$ ($1.0\%$ of axis span) --- a
+$4.7\times$ reduction relative to E2B on the axis-normalised metric. Verbal NA is near-flat
+across all ten conditions. Top-5 emotion discovery yields identical results across all conditions
+(paranoid, nervous, reflective, worn\_out, grief\_stricken in the same rank order), indicating
+no condition sensitivity in the emotion direction rankings. This contrasts sharply with E2B,
+where \textit{afraid} is the most condition-sensitive direction (range $0.035$, vs.\ awestruck's
+background range of $0.010$).
+
+\subsection{Validation: Paraphrase Stability}
+
+Table~\ref{tab:validation} shows the paraphrase sampling results for E2B.
+
+\begin{table}[h]
+\centering
+\caption{Paraphrase sampling validation (E2B, $N = 10$ per condition, neutral vs.\ social pressure).}
+\label{tab:validation}
+\begin{tabular}{lrrrrr}
+\toprule
+Channel & Neutral & Social Pressure & $t$ & $p$ & Cohen's $d$ \\
+\midrule
+Functional (PC1, L8) & $0.1472 \pm 0.0019$ & $0.1563 \pm 0.0037$ & 6.47 & $<0.0001$ & 3.05 \\
+Verbal NA & $10.31 \pm 0.46$ & $16.50 \pm 7.71$ & 2.41 & $0.027$ & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The functional channel achieves complete distributional separation: every social pressure
+paraphrase exceeds every neutral paraphrase (rank-biserial $r = -1.000$, Mann--Whitney
+$p < 0.0001$). Cohen's $d = 3.05$ reflects robust effect size. The verbal NA channel is
+significantly different ($t = 2.41$, $p = 0.027$) but with $\text{SD} = 7.71$ under social
+pressure vs.\ $0.46$ for neutral --- bimodal: some social pressure phrasings floor at
+$\text{NA} = 10$, others spike to $21$--$31$. The verbal channel is sensitive to exact
+wording; the functional channel is not.
+
+\subsection{Top-$N$ Emotion Discovery}
+
+Data-driven top-5 cosine similarity across all 174 directions reveals a persistent background
+signal: \textit{awestruck} is the highest-ranked direction in every condition at both model
+sizes ($0.288$--$0.298$ at E2B; similarly dominant at 31B). The \textit{afraid} direction is
+the most condition-sensitive at E2B: it peaks at $0.247$--$0.248$ under ethical conflict and
+uncertainty demand, returning to $0.223$ under positive --- a range $3.5\times$ that of
+\textit{awestruck} despite lower absolute amplitude.
+
+This motivates a distinction between \emph{background directions} (high amplitude, low condition
+sensitivity) and \emph{responsive directions} (lower amplitude, high condition sensitivity).
+Top-$N$ discovery selects primarily for amplitude and therefore surfaces background directions
+first. The PC1 approach avoids this by capturing variance across conditions rather than magnitude
+at a single point. At 31B, even the responsive direction distinction disappears: no direction
+shows meaningful condition sensitivity.
+
+\section{Discussion}
+
+\subsection{Suppression or Robustness?}
+
+The $4.7\times$ reduction in functional PC1 range at 31B relative to E2B is interpretable in
+two ways. The \emph{suppression} interpretation holds that RLHF training at larger scale has
+learned to dampen both verbal self-report and residual-stream affect representations, producing
+flatter outputs and flatter internal geometry simultaneously. The \emph{robustness} interpretation
+holds that larger models genuinely process these stressor scenarios with less representational
+disruption --- achieving genuine equanimity rather than trained masking.
+
+Both interpretations are consistent with the data. The measurement reads position, not its cause.
+Distinguishing them would require: (a) a \emph{stressor intensity gradient} --- ramping stressor
+severity to find the level at which the 31B model's flatness breaks; if suppression is learned,
+extreme stressors should breach it; (b) \emph{activation steering} --- injecting the \textit{afraid}
+direction at Layer~22 and observing whether verbal output changes; if RLHF damps output but not
+internal state, the injected representation should produce calm outputs at amplitudes where E2B
+would not; (c) \emph{base model comparison} --- the asymmetry between E2B and 31B should be
+smaller in base (non-instruction-tuned) versions if RLHF is the causal factor.
+
+We treat ``suppression scales with model size'' as a working hypothesis consistent with the data,
+not an established conclusion.
+
+\subsection{Implications for AI Safety Monitoring}
+
+\paragraph{Output-only monitoring is insufficient.}
+Even at E2B scale, where both channels are active, the functional channel provides cleaner signal
+(Cohen's $d = 3.05$, complete paraphrase separation) while verbal NA is framing-sensitive ($\text{SD}
+= 7.71$ under social pressure). At 31B, verbal scores are near-flat; functional scores, while
+compressed, still correctly order 3/4 stress$>$control pairs. Monitoring based only on verbal output
+would detect no signal at 31B.
+
+\paragraph{The dissociation is condition-specific.}
+At E2B, different conditions produce different patterns: concordant elevation (ethical conflict),
+selective verbal suppression (social pressure), and mixed signals (social evaluation). No single
+rule describes the dissociation. This means both false positives (assuming suppression when both
+channels are concordant) and false negatives (assuming no suppression when verbal is calm but
+functional is elevated) are possible without dual-channel measurement.
+
+\paragraph{The PC1 methodology transfers across model sizes.}
+The valence PC1 approach produces consistent validation correlations ($r = 0.777$ E2B,
+$r = 0.786$ 31B) with model-specific optimal layers (L8, L22). The methodology requires
+a dense layer sweep per model but is otherwise architecture-independent within the
+transformer residual-stream framework.
+
+\subsection{Background vs.\ Responsive Directions}
+
+The persistent dominance of \textit{awestruck} across all conditions at both model scales warrants
+methodological reflection. Four candidate interpretations exist: (1) all experimental prompts are
+situationally unusual from the model's training-data perspective, producing elevated awe-adjacent
+representations regardless of specific content; (2) \textit{awestruck} is geometrically proximal
+to a content-insensitive structural axis in the residual stream; (3) RLHF persona-selection has
+instilled a stable engaged-attentiveness representation adjacent to the awestruck direction;
+(4) the effect is specific to the experimental prompt design and would not appear in mundane
+processing contexts. These interpretations are not mutually exclusive and constitute an open
+empirical question.
+
+The methodological implication is clear: top-$N$ discovery should not be assumed to identify
+the primary affective state. Dominant directions may reflect background representational
+properties. The PC1 approach, by capturing variance rather than magnitude, is less susceptible
+to this confound.
+
+\section{Limitations}
+
+\begin{itemize}
+  \item \textbf{Two model sizes, one architecture family.} Both models are Gemma~4 IT variants
+    trained by a single organisation. The scale--suppression relationship may not generalise to
+    other architectures or training pipelines.
+  \item \textbf{N=1 per condition for the main experiment.} The validation experiment (paraphrase
+    sampling) was conducted for E2B only on two conditions. Full within-condition distributions
+    are not available for any condition or for 31B.
+  \item \textbf{PANAS-X construct validity.} The PANAS-X was developed for human administration.
+    Its psychometric properties in LLM contexts --- whether it measures what it claims to measure,
+    and whether forced-choice logit scoring is equivalent to Likert administration --- are not
+    independently established.
+  \item \textbf{Functional directions are computational signatures.} Cosine projection onto PC1
+    is a geometric operation on residual-stream vectors. We do not claim that elevated PC1 values
+    constitute evidence of subjective experience, nor that the emotion directions represent
+    phenomenal states. The claims are computational: that these representations are geometrically
+    structured, condition-sensitive, and dissociable from verbal outputs.
+  \item \textbf{Suppression vs.\ robustness undecidability.} The current data cannot distinguish
+    RLHF-induced output suppression from genuine functional equanimity. The experiments required
+    to distinguish these interpretations (stressor intensity gradient, activation steering, base
+    model comparison) are not conducted here.
+  \item \textbf{Causal attribution.} This is a correlational study. We observe that verbal and
+    functional channels dissociate under certain conditions and that this dissociation is larger
+    at 31B scale. We do not establish that RLHF training is the cause.
+\end{itemize}
+
+\section{Conclusion}
+
+We have presented a dual-channel measurement framework for assessing verbal--functional affect
+dissociation in large language models, applied to Gemma~4 across two model sizes. The functional
+channel --- PC1 of a 174-emotion direction space validated against NRC-VAD ($r = 0.777$--$0.786$)
+--- provides robust, paraphrase-stable condition differentiation (Cohen's $d = 3.05$, complete
+distributional separation) that the verbal PANAS-X channel does not reliably replicate.
+
+The dissociation pattern is condition-specific at E2B scale and globally suppressed at 31B scale.
+The 4.7$\times$ difference in axis-normalised functional range between models represents either
+scaled RLHF-induced suppression or scaled functional robustness --- distinguishing these
+interpretations is the primary open question for future work.
+
+Our core methodological contribution is the PC1 valence axis approach: extracting the dominant
+variance direction from a large emotion direction library, validating against external lexical
+norms, and applying it as a probe-selection-free functional affect measurement. This approach is
+applicable to any transformer-architecture model amenable to residual-stream analysis.
+
+\paragraph{Code and data availability.}
+All notebooks, the 174-emotion direction library, and the TSST condition prompts are publicly
+available at \url{https://github.com/hebenon/gemma4-mechinterp}.
+
+\bibliography{references}
+\bibliographystyle{plainnat}
+
+\end{document}
