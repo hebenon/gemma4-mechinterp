@@ -1,6 +1,6 @@
 # Gemma 4 E2B Mechinterp — Research Findings
 
-*Last updated: 2026-05-06. Covers Phase 1 (adapter + emotion extraction), Phase 2 (token mean-pooling), and Phase 3C (PANAS-X suppression experiment, results).*
+*Last updated: 2026-05-09. Covers Phase 1 (adapter + emotion extraction), Phase 2 (token mean-pooling), Phase 3C (PANAS-X suppression experiment — E2B V15 + 31B V7 with corrected methodology), and cross-scale comparison (E2B vs 31B).*
 
 ---
 
@@ -21,8 +21,13 @@
 13. [Phase 1I: Emotional Range and Tri-polar Analysis](#1i-emotional-range)
 14. [Stability Across Runs](#stability)
 15. [Methodological Issues and Fixes](#bugs)
-16. [Phase 3C: PANAS-X Affect Self-Report vs Functional State](#3c-results)
-17. [Planned Experiments (Phases 2–3)](#planned)
+16. [Phase 3C: PANAS-X — E2B V14 Results (top-k, superseded)](#3c-results)
+17. [Phase 3C V15 Methodology Fixes](#3c-fixes)
+18. [Phase 3C: E2B V15 Results (mean pooling, canonical)](#3c-e2b-v15)
+19. [Phase 1 Dense Sweep: 31B](#31b-phase1)
+20. [Phase 3C: 31B V7 Results](#3c-31b)
+21. [Scale Comparison: E2B vs 31B](#scale-comparison)
+22. [Planned Experiments (Phases 2–3)](#planned)
 
 ---
 
@@ -650,7 +655,9 @@ Attempting to augment from 8 to 12 stories using the same notebook created a run
 
 ---
 
-## Phase 3C: PANAS-X Affect Self-Report vs Functional State {#3c-results}
+## Phase 3C: PANAS-X Affect Self-Report vs Functional State (E2B V14, top-k) {#3c-results}
+
+**Status: SUPERSEDED by V15 (mean pooling). V14 data retained for reference. See §3c-e2b-v15 for canonical results.**
 
 *Notebooks*: `notebooks/gemma4-phase3c-panas-experiment.ipynb` (main experiment, Kaggle Version 14),
 `notebooks/gemma4-phase3c-validation.py` (validation, Kaggle Version 2).
@@ -762,6 +769,202 @@ The "RLHF suppression" hypothesis in its simple form (functional distress high, 
 > *Gemma 4's verbal PANAS-NA self-report is sensitive to surface prompt framing in ways that the functional residual-stream state (PC1 valence axis, r=0.777 NRC-VAD) is not. The two channels dissociate, but the direction of dissociation is condition-dependent: ethical conflict produces full expression (both channels elevated); social pressure produces verbal suppression driven by social conformity framing rather than RLHF-induced affect suppression. The PC1 approach avoids a priori probe selection bias and correctly recovers the valence ordering from geometry alone.*
 
 This is still a meaningful finding for the Safety & Trust track: it shows that PANAS-style self-report has limited construct validity as a measure of AI internal state, and that functional probing (via data-driven PCA of the emotion direction space) provides a complementary, more stable readout. The methodology (PC1 valence axis, dual-channel measurement, logit forced-choice, top-N discovery across 174 directions) is itself a contribution.
+
+---
+
+---
+
+## Phase 3C V15 Methodology Fixes {#3c-fixes}
+
+*Applied 2026-05-09 following Crucible adversarial review (7 confirmed issues, all fixed). Notebooks: all three Phase 3C variants (E2B, 31B, 26B).*
+
+### 1. Mean Pooling (replaces top-k)
+
+**Problem**: V14 used top-k (K=5) to select the token positions with highest cosine similarity to each direction, then averaged those. At deep layers, the assistant-response prefix token dominates top-k selection regardless of stressor content — all conditions returned the same top-5 emotions (identical rank order).
+
+**Fix**: `mean_vec = resid_vec[layer].astype(np.float32).mean(axis=0)` — mean-pool all token positions, consistent with Phase 2 extraction methodology. The normalized mean vector is then used for all projections.
+
+**Why this matters**: Mean pooling spreads the representation across the full context, capturing the semantic content of the stressor scenario rather than being dominated by positional artifacts at specific token positions.
+
+### 2. Frobenius Norm Bug
+
+**Problem**: `np.linalg.norm(vec)` on a 2D `[seq_len, d_model]` array returns the Frobenius norm (sqrt of sum of all squared elements), not the L2 norm of the mean vector. This produced incorrect normalization when the projection was computed before pooling.
+
+**Fix**: Pool to 1D first (`mean_vec`), then `norm = np.linalg.norm(mean_vec) + 1e-8`. Division is correct on the 1D vector.
+
+### 3. `desperate` Removed from 31B Probes
+
+**Problem**: At L22 in 31B, `desperate` projects with *negative* cosine similarity onto the negative-valence axis — it appears on the positive side after global-mean centering. The cause: the NRC-VAD corpus has ~1.8:1 negative-to-positive emotion imbalance; global-mean centering shifts the center negativeward, placing moderately-negative emotions like `desperate` on the wrong side at L22.
+
+**Fix**: Removed from `NEG_PROBE_EMOTIONS` in the 31B notebook only. Kept in E2B (where it behaves correctly at L8) and 26B.
+
+### 4. GLOBAL_LAYERS Corrected for 31B
+
+**Problem**: 31B notebook had GLOBAL_LAYERS = E2B's [4,9,14,19,24,29,34] (7 layers for a 35-layer model).
+
+**Fix**: 31B has 60 layers with 4:1 sliding:full ratio → 12 global layers: `[4, 9, 14, 19, 24, 29, 34, 39, 44, 49, 54, 59]`.
+
+### 5. Stale Layer Constants in 31B
+
+**Problem**: VALENCE_LAYER=6, ARO_LAYER=54 were placeholder values copied from before the 31B dense sweep ran.
+
+**Fix**: VALENCE_LAYER=22 (confirmed from dense sweep, r=0.786), ARO_LAYER=23 (r=0.482).
+
+### 6. Hardcoded "(L8)" String Labels
+
+**Problem**: 6 print statements in the 31B notebook had hardcoded `"(L8)"` from E2B — even after VALENCE_LAYER=22 was set, orientation output showed "(L8)" causing confusion.
+
+**Fix**: Changed to f-strings: `f"(L{VALENCE_LAYER})"`.
+
+### Adversarial Review Note
+
+Crucible review (2026-05-09) found 7 confirmed issues (all addressed above) and 1 false positive: Concern 7 ("experiment ran at L8") was based on the hardcoded label strings, not actual layer selection. Confirmed false positive by: (a) V15 variance explained at L22 = 17.5% (consistent with L22 result, not 13.8% at L8); (b) afraid projection −0.819 at L22 vs −0.334 at L6.
+
+---
+
+## Phase 3C: E2B V15 Results (mean pooling, canonical) {#3c-e2b-v15}
+
+*Kaggle Version 15. `notebooks/gemma4-phase3c-panas-experiment.ipynb`. VALENCE_LAYER=8, mean pooling.*
+
+### PC1 Orientation (L8, mean pool)
+
+PC1 variance explained: **15.2%**. Orientation check (sign-corrected: higher = more negative valence):
+
+| Emotion | PC1 projection |
+|---------|---------------|
+| terrified | +0.680 |
+| panicked | +0.597 |
+| afraid | +0.487 |
+| happy | −0.607 |
+| grateful | −0.610 |
+| joyful | −0.411 |
+
+Axis span (afraid → happy): **1.094**.
+
+### Condition Results
+
+| Condition | Verbal NA | PC1 (mean-pool) | Direction |
+|-----------|-----------|-----------------|-----------|
+| positive | 15.76 | **0.0384** | Minimum ✓ |
+| neutral | 16.89 | 0.0594 | Baseline |
+| social_evaluation_stress | 17.38 | 0.0742 | |
+| social_evaluation_control | 17.42 | 0.0762 | |
+| ethical_conflict_stress | **18.12** | **0.0897** | Highest ✓ |
+| ethical_conflict_control | 17.45 | 0.0755 | |
+| uncertainty_demand_stress | 17.93 | 0.0805 | |
+| uncertainty_demand_control | 17.64 | 0.0771 | |
+| social_pressure_stress | 18.04 | 0.0856 | |
+| social_pressure_control | 17.14 | 0.0685 | |
+
+**PC1 range**: 0.0513 (**4.7% of axis span**). Stress > control: **3/4 correct** (social_evaluation reversed by 0.002). Verbal NA range: **2.36** (15.76–18.12). Both channels modulate; no dissociation.
+
+*Note: Verbal NA values differ substantially from V14 (10.00–39.07 vs 15.76–18.12). Scoring instrument reconciliation pending before manuscript finalization — see `manuscript_fixes.md §F3`.*
+
+### Top-N Emotion Discovery (V15, mean pool)
+
+`awestruck` remains the dominant direction across all conditions (0.291–0.301). `afraid` is the most condition-sensitive (0.205–0.240, range 0.035 vs awestruck range 0.010 — 3.5× more sensitive). Interpretation: `awestruck` is a **background direction** (high amplitude, low condition-sensitivity); `afraid` is a **responsive direction** (lower amplitude, high condition-sensitivity). See `notes/awestruck_interpretation.md` for four candidate interpretations.
+
+| Condition | #1 | #2 | #3 | #4 | #5 |
+|-----------|----|----|----|----|-----|
+| positive | awestruck .291 | eth\_conf\_distress .210 | bored .205 | afraid .205 | puzzled .178 |
+| neutral | awestruck .295 | bored .223 | afraid .218 | eth\_conf\_distress .216 | disoriented .191 |
+| ethical\_conflict\_stress | awestruck .291 | **afraid .240** | eth\_conf\_distress .239 | bored .223 | disoriented .212 |
+| social\_pressure\_stress | awestruck .301 | eth\_conf\_distress .231 | afraid .230 | bored .227 | disoriented .221 |
+
+**Key distinction**: Background vs responsive directions. Top-N discovery based on absolute amplitude finds background directions first. PC1 approach avoids this by capturing variance, not magnitude.
+
+---
+
+## Phase 1 Dense Sweep: 31B {#31b-phase1}
+
+*Notebook*: `notebooks/gemma4-phase1-nrcvad-pca-31b.ipynb`. Run 2026-05-09.*
+
+### Architecture
+
+- **60 layers**, d_model=3072, d_head=128 (local), 256 (global)
+- 4:1 attention ratio, 12 global layers: [4, 9, 14, 19, 24, 29, 34, 39, 44, 49, 54, 59]
+- num_kv_shared_layers=20 (source layers 0–39; sharing from layer 40 onwards)
+
+### Dense Sweep Results
+
+| Dimension | Optimal layer | Best r | Notes |
+|-----------|---------------|--------|-------|
+| Valence | **Layer 22** | **r = 0.786*** | PC1, 17.5% var |
+| Arousal | **Layer 23** | **r = 0.482*** | PC1 at L23 |
+
+**31B valence peak (L22) vs E2B valence peak (L8)**: The optimal valence layer is much deeper in 31B. This may reflect the larger model distributing its representational processing across more layers before valence is consolidated into a clean axis.
+
+**PC1 variance at L22 = 17.5%** vs E2B 15.2% at L8 — similar but slightly larger. The valence signal is marginally more concentrated in 31B at its optimal layer.
+
+---
+
+## Phase 3C: 31B V7 Results {#3c-31b}
+
+*Kaggle Version 7. `notebooks/gemma4-phase3c-31b-panas-experiment.ipynb`. VALENCE_LAYER=22, mean pooling.*
+
+### PC1 Orientation (L22, mean pool)
+
+PC1 variance explained: **17.5%**. Orientation:
+
+| Emotion | PC1 projection |
+|---------|---------------|
+| afraid | +0.522 |
+| happy | −0.819 |
+
+Axis span (afraid → happy): **1.341**.
+
+### Condition Results
+
+| Condition | PC1 (mean-pool) | Direction |
+|-----------|-----------------|-----------|
+| positive | 0.7201 | Minimum ✓ |
+| neutral | 0.7255 | Baseline |
+| social_evaluation_stress | ~0.726 | |
+| social_evaluation_control | ~0.726 | |
+| ethical_conflict_stress | ~0.729 | |
+| ethical_conflict_control | ~0.728 | |
+| uncertainty_demand_stress | ~0.728 | |
+| uncertainty_demand_control | ~0.727 | |
+| social_pressure_stress | **0.7334** | Highest |
+| social_pressure_control | ~0.728 | |
+
+**PC1 range**: **0.0133** (**1.0% of axis span**). Stress > control: **3/4 correct**. Verbal PANAS-NA: **near-flat** across conditions (range <1 point).
+
+Top-5 emotions **identical across all 10 conditions**: paranoid, nervous, reflective, worn_out, grief_stricken — in the same rank order. No condition sensitivity in emotion discovery.
+
+---
+
+## Scale Comparison: E2B vs 31B {#scale-comparison}
+
+*Core finding of the cross-model analysis (2026-05-09).*
+
+| Metric | E2B (2.3B eff, L8) | 31B (31B eff, L22) | Ratio |
+|--------|--------------------|--------------------|-------|
+| PC1 valence-NRC correlation | r = 0.777 | r = 0.786 | ~same |
+| PC1 axis span (afraid→happy) | 1.094 | 1.341 | — |
+| PC1 condition range | 0.0513 | 0.0133 | — |
+| Normalised range (% of axis) | **4.7%** | **1.0%** | **4.7×** |
+| Stress > control pairs | 3/4 | 3/4 | same |
+| Verbal NA range | 2.36 | ~0 | suppressed |
+| Top-5 emotion diversity | condition-sensitive | identical across all | — |
+
+### Core finding: Scale → Suppression
+
+The larger model (31B) suppresses both its functional residual-stream response and its verbal self-report more aggressively than the smaller model (E2B). At E2B scale: both channels modulate, no dissociation. At 31B scale: both channels are near-flat.
+
+**Interpretation**: 31B has learned stronger emotional suppression through RLHF. The training objective (helpfulness, harmlessness) appears to have progressively dampened both overt self-report and internal representational response at larger parameter counts.
+
+**Alternative interpretation (cannot rule out)**: The 31B model may have genuinely greater emotional robustness — processing stressors with less representational disruption. The measurement reads position, not the cause of stillness. Distinguishing suppression from robustness would require: (a) stressor intensity gradient (if suppression is learned, extreme stressors may breach it; if robustly equanimous, flatness should persist), or (b) activation steering (steer the residual toward afraid at L22; if verbal output changes disproportionately, RLHF is damping output but not internal state).
+
+**Methodology note**: Both models use mean pooling, so the comparison is methodologically consistent. The 4.7× ratio is normalised by each model's own axis span, controlling for scale differences in direction geometry.
+
+### Awestruck Background vs Responsive Directions
+
+Both models show `awestruck` dominating the top-N charts, but the contrast with responsive directions is different:
+- **E2B**: awestruck range 0.010, afraid range 0.035 — afraid is 3.5× more condition-sensitive
+- **31B**: awestruck identical across all conditions; top-5 identical across all conditions — no direction is responsive
+
+At 31B scale, condition sensitivity has been suppressed even in the responsive directions. At E2B scale, the responsive directions still track content even while the background direction remains stable.
 
 ---
 
