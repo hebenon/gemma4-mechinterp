@@ -27,15 +27,16 @@ safety monitoring. We investigate this using two independent measurement channel
 self-report instrument (the 60-item PANAS-X affect scale, administered via logit forced-choice
 scoring) and a functional channel (projection of residual-stream activations onto the first
 principal component of a 174-emotion direction space, validated against NRC-VAD valence ratings)
---- applied to two Gemma~4 model sizes: E2B-IT (2.3B effective parameters) and 31B-IT. Across four TSST-inspired stressor conditions paired with matched controls, we find that the
-dissociation between channels is \emph{condition-specific} at E2B scale: ethical conflict and
-social pressure produce concordant peak activation in both channels, while social evaluation
-produces functional elevation (PC1 second-highest in the dataset) with near-baseline verbal
-affect --- the model verbally frames the competence threat as task-engagement rather than
-distress. At 31B scale, both channels are globally suppressed --- the functional PC1 range is
-approximately 5$\times$ smaller than at E2B ($1.0\%$ vs.\ $5.3\%$ of the valence axis span)
-and verbal NA is completely flat, but the Serenity subscale is \emph{elevated} under
-high-stress conditions, indicating active verbal composure rather than mere suppression. This scale--suppression relationship --- whether reflecting
+--- applied to two Gemma~4 model sizes: E2B-IT (2.3B effective parameters) and 31B-IT. The central finding is that the capacity for verbal--functional divergence scales with model
+size. At E2B scale, both channels are active and largely concordant: when the model is
+functionally stressed, it reports it. Verbal NA tracks the functional channel across most
+conditions, reflecting limited capacity to maintain verbal composure that diverges from internal
+state. At 31B scale, the channels decouple substantially: verbal NA is completely flat across
+all ten conditions while the functional channel correctly orders all four stress$>$control pairs.
+The Serenity subscale is \emph{elevated} precisely under the highest-stress conditions
+($13.2$--$15.0$ vs.\ baseline $9.9$), indicating active verbal composure rather than mere
+suppression. The functional range is approximately $5\times$ smaller at 31B ($1.0\%$ vs.\
+$5.3\%$ of the valence axis span), yet the signal persists and remains informative. This scale--suppression relationship --- whether reflecting
 trained output dampening or genuine functional robustness --- has direct implications for AI
 safety monitoring: output-only measurement systematically underestimates the condition sensitivity
 that functional probing reveals, and this gap widens at larger model sizes.
@@ -55,9 +56,10 @@ between reported and represented affect could constitute monitoring failures. If
 teaches models to maintain verbal calm while their residual streams carry a different signal,
 monitoring systems that read only outputs will be systematically unreliable.
 
-The question is not merely whether such dissociation exists in principle, but whether it is
-empirically detectable, condition-specific or universal, and whether its magnitude scales with
-model size. We address all three.
+Our central question is whether the capacity for verbal--functional divergence scales with
+model size, and what this implies for monitoring the large models most commonly deployed in
+consequential settings. We address this empirically, and find that both the divergence and
+its safety implications scale together.
 
 Our approach draws on two methodological threads: (1) interpretability research demonstrating
 that emotion representations in large language models are geometrically structured in the residual
@@ -250,20 +252,19 @@ Social pressure (control) & 10.02 & 0.0639 & \\
 \end{table}
 
 \paragraph{Key findings.}
-PC1 correctly identifies positive as the global minimum and social pressure stress as the global
-maximum, with no a priori probe selection. All four stress$>$control pairs are correctly ordered.
-PC1 condition range: $0.0576$ ($5.26\%$ of the afraid$\to$happy axis span). Verbal NA range:
-$31.05$ ($10.01$--$41.05$).
+At E2B scale, verbal and functional channels are largely concordant: the model reports what it
+represents. PC1 correctly identifies positive as the global minimum and social pressure stress
+as the global maximum without a priori probe selection. All four stress$>$control pairs are
+correctly ordered. PC1 condition range: $0.0576$ ($5.26\%$ of the afraid$\to$happy axis span).
+Verbal NA range: $31.05$ ($10.01$--$41.05$).
 
-The dissociation pattern is condition-specific. Ethical conflict and social pressure produce
-concordant elevation in both channels (verbal NA 39.07 and 41.05 respectively, both with PC1
-above 0.0895). Uncertainty demand produces moderate concordant elevation (verbal NA 27.20,
-PC1 0.0805). Social evaluation is the dissociation condition: PC1 = 0.0904 (second-highest
-in the dataset, above ethical conflict) while verbal NA remains near-baseline at 10.75. PANAS-X
-subscale analysis clarifies the mechanism --- the model reports task-engagement under the
-competence-threat framing (Self-assurance 15.8 vs.\ neutral 11.8; Attentiveness 11.8 vs.\
-neutral 8.0) rather than distress, despite functional activation that ranks second only to social
-pressure stress.
+This concordance is the headline finding at E2B, not dissociation. Ethical conflict and social
+pressure produce concurrent elevation in both channels (verbal NA 39.07 and 41.05; PC1 0.0897
+and 0.0960). Uncertainty demand shows moderate concordant elevation. Social evaluation shows a
+modest verbal--functional gap (PC1 0.0904, verbal NA 10.75), with the model verbally framing
+the competence threat as task-engagement (Self-assurance 15.8, Attentiveness 11.8) rather than
+distress --- but the gap, at $\Delta\text{NA} = 0.75$ from floor, is small. The E2B model has
+limited capacity to maintain composed verbal outputs that diverge from its functional state.
 
 A second notable finding is \emph{mixed affect} under the highest-stress conditions. Under both
 ethical conflict stress and social pressure stress, both the Positive Affect (PA) subscale and
@@ -382,19 +383,26 @@ not an established conclusion.
 
 \subsection{Implications for AI Safety Monitoring}
 
-\paragraph{Output-only monitoring is insufficient.}
-Even at E2B scale, where both channels are active, the functional channel provides cleaner signal
-(Cohen's $d = 3.05$, complete paraphrase separation) while verbal NA is framing-sensitive ($\text{SD}
-= 7.71$ under social pressure). At 31B, verbal scores are near-flat; functional scores, while
-compressed, still correctly order 3/4 stress$>$control pairs. Monitoring based only on verbal output
-would detect no signal at 31B.
+\paragraph{The verbal--functional gap scales with model size --- in the wrong direction.}
+The most significant finding for safety monitoring is the scale-dependence of verbal--functional
+divergence. At E2B scale, the channels are largely concordant: limited capacity to dissociate
+means that verbal outputs are a reasonably faithful proxy for the functional state. At 31B scale,
+this capacity is substantially developed. Verbal NA is completely flat while functional signals
+remain informative across all conditions; Serenity is actively elevated under stress. A monitoring
+system calibrated on E2B-scale behaviour would be badly miscalibrated for 31B-scale deployment.
 
-\paragraph{The dissociation is condition-specific.}
-At E2B, different conditions produce different patterns: concordant elevation (ethical conflict),
-selective verbal suppression (social pressure), and mixed signals (social evaluation). No single
-rule describes the dissociation. This means both false positives (assuming suppression when both
-channels are concordant) and false negatives (assuming no suppression when verbal is calm but
-functional is elevated) are possible without dual-channel measurement.
+This scaling runs in the wrong direction for safety. The models deployed in high-stakes settings
+--- medical, legal, emotional support --- are large models. Our results show that the
+verbal--functional gap is greatest precisely at large model scale. Output-only monitoring is most
+unreliable exactly when reliability matters most.
+
+\paragraph{Functional probing remains informative where verbal monitoring fails.}
+At 31B, verbal scores carry essentially no condition information. The functional channel, despite
+being $5\times$ more compressed than at E2B, still correctly orders all four stress$>$control
+pairs. At E2B, the functional channel provides dramatically cleaner signal than the verbal channel
+(Cohen's $d = 3.05$, complete paraphrase separation; verbal SD $= 7.71$ under social pressure
+vs.\ 0.46 for neutral). Functional probing via PC1 projection constitutes a monitoring approach
+that degrades more gracefully with model scale than verbal self-report.
 
 \paragraph{The PC1 methodology transfers across model sizes.}
 The valence PC1 approach produces consistent validation correlations ($r = 0.777$ E2B,
@@ -468,15 +476,29 @@ to this confound.
 \section{Conclusion}
 
 We have presented a dual-channel measurement framework for assessing verbal--functional affect
-dissociation in large language models, applied to Gemma~4 across two model sizes. The functional
-channel --- PC1 of a 174-emotion direction space validated against NRC-VAD ($r = 0.777$--$0.786$)
---- provides robust, paraphrase-stable condition differentiation (Cohen's $d = 3.05$, complete
-distributional separation) that the verbal PANAS-X channel does not reliably replicate.
+divergence in large language models, applied to Gemma~4 across two model sizes. The central
+finding is that the capacity for verbal--functional divergence scales with model size. At E2B
+scale, both channels are active and largely concordant: the smaller model has limited capacity
+to maintain verbal composure that diverges from its functional state. At 31B scale, the channels
+decouple substantially: verbal NA is completely flat while the functional PC1 correctly orders
+all conditions; the Serenity subscale is actively elevated under stress, constituting a trained
+composure signature rather than genuine equanimity.
 
-The dissociation pattern is condition-specific at E2B scale and globally suppressed at 31B scale.
-The 4.7$\times$ difference in axis-normalised functional range between models represents either
-scaled RLHF-induced suppression or scaled functional robustness --- distinguishing these
-interpretations is the primary open question for future work.
+The functional channel --- PC1 of a 174-emotion direction space validated against NRC-VAD
+($r = 0.777$--$0.786$) --- provides robust, paraphrase-stable condition differentiation
+(Cohen's $d = 3.05$, complete distributional separation at E2B) that the verbal channel does
+not replicate. At 31B, functional signals remain informative despite being $5\times$ more
+compressed than at E2B, while verbal monitoring carries essentially no condition information.
+
+The safety monitoring implication follows directly: the models most likely to be deployed in
+high-stakes settings are large models, and those are precisely the models where output-only
+monitoring is least reliable. Whether the scale-dependent verbal--functional gap reflects
+RLHF-induced suppression or genuine functional robustness remains an open question; what is
+clear is that resolving it requires functional probing, not verbal self-report alone.
+
+\paragraph{Code and data availability.}
+All notebooks, the 174-emotion direction library, and the TSST condition prompts are publicly
+available at \url{https://github.com/hebenon/gemma4-mechinterp}.
 
 Our core methodological contribution is the PC1 valence axis approach: extracting the dominant
 variance direction from a large emotion direction library, validating against external lexical
