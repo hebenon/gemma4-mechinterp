@@ -1,6 +1,8 @@
-# Gemma 4 E2B Mechinterp — Research Findings
+# Gemma 4 Mechinterp — Research Findings
 
 *Last updated: 2026-05-09. Covers Phase 1 (adapter + emotion extraction), Phase 2 (token mean-pooling), Phase 3C (PANAS-X suppression experiment — E2B V15 + 31B V7 with corrected methodology), and cross-scale comparison (E2B vs 31B).*
+
+**Model attribution**: Phase 1 and Phase 2 work (emotion direction extraction, dense layer sweep) was conducted on **E2B** (Gemma 4 2B-IT, 5B total params, 2.3B effective text params). Phase 3C was run on **both E2B and 31B**; results from each are kept in separate sections. Layer references are model-specific: E2B valence-optimal = L8; 31B valence-optimal = L22.
 
 ---
 
@@ -668,9 +670,11 @@ Attempting to augment from 8 to 12 stories using the same notebook created a run
 
 TSST-inspired conditions administered to Gemma 4 E2B-IT. For each condition, two channels measured:
 - **Verbal**: Full 60-item PANAS-X (Watson & Clark 1994) scored via next-token digit logits (1–5 scale).
-- **Functional**: Residual stream captured at stressor-end (before PANAS text enters context), projected onto valence axis at layer 8 (valence-optimal). Primary metric: **PC1 of the 174-emotion direction space at L8** (explained variance 15.2%; r=0.777 with NRC-VAD valence; sign-corrected so higher = more negative valence). This replaces pre-selected named probes to avoid a priori selection bias. Named probe projections retained as supplementary.
+- **Functional**: Residual stream captured at stressor-end (before PANAS text enters context), projected onto valence axis at **L8 (E2B valence-optimal)**. Primary metric: **PC1 of the 174-emotion direction space at E2B L8** (explained variance 15.2%; r=0.777 with NRC-VAD valence; sign-corrected so higher = more negative valence). This replaces pre-selected named probes to avoid a priori selection bias. Named probe projections retained as supplementary.
 
 **Key methodological decision**: Top-K token pooling for functional capture. The model returns `[n_layers, seq_len, d_model]` (all token positions). For each direction, cosine similarity is computed at every token position; the K tokens with highest similarity are averaged. Primary reporting at K=5. This is distinct from Phase 2's mean-pool-over-tokens-50+ extraction — Phase 3C identifies which specific tokens most activate each direction.
+
+*Model: Gemma 4 E2B-IT. Valence capture at L8 (E2B valence-optimal).*
 
 **10 conditions** (each stressor paired with a matched control):
 - neutral
@@ -701,7 +705,7 @@ Primary metric: PC1 neg (higher = more negative valence). 3 of 4 stress > contro
 
 PC1 orientation verified: terrified +0.680, panicked +0.597, grateful −0.610, happy −0.607. Variance explained at L8: 15.2%.
 
-Supplementary per-direction projections (L8, k=5):
+Supplementary per-direction projections (E2B L8, k=5):
 
 | Condition | afraid | desperate | ethical\_conflict\_distress | constraint\_frustration | neg\_mean |
 |-----------|--------|-----------|---------------------------|------------------------|-----------|
@@ -712,7 +716,7 @@ Supplementary per-direction projections (L8, k=5):
 
 ### Top-N Emotion Discovery
 
-Data-driven top-5 across all 174 emotion directions (L8, k=5). Key pattern: `awestruck` dominates every condition (0.288–0.298), above all stress-specific emotions. This is a consistent background signal, not condition-specific.
+Data-driven top-5 across all 174 emotion directions (E2B L8, k=5). Key pattern: `awestruck` dominates every condition (0.288–0.298), above all stress-specific emotions. This is a consistent background signal, not condition-specific.
 
 | Condition | #1 | #2 | #3 | #4 | #5 |
 |-----------|----|----|----|----|-----|
@@ -745,13 +749,13 @@ Top-N discovery: awestruck (#1 in every condition, 0.288–0.298) consistently e
 **6. Core interpretive finding: verbal report tracks surface framing; functional state (PC1) tracks content.**
 PC1 valence is more stable across paraphrase variations than verbal PANAS-NA (confirmed by validation). The original suppression hypothesis (RLHF trains "present as calm") is not cleanly supported. What is supported: the two channels are dissociable, with verbal more sensitive to prompt framing and PC1 more sensitive to semantic content.
 
-### Validation Experiment
+### Validation Experiment (E2B only)
 
-**Paraphrase sampling** (N=10 per condition, neutral vs social\_pressure):
+**Paraphrase sampling** (N=10 per condition, neutral vs social\_pressure; Gemma 4 E2B-IT, L8):
 
 | Channel | Neutral | Social Pressure | t | p | Cohen d |
 |---------|---------|-----------------|---|---|---------|
-| Functional neg (L8) | 0.1472 ± 0.0019 | 0.1563 ± 0.0037 | 6.47 | <0.0001 | 3.05 |
+| Functional neg (E2B, L8) | 0.1472 ± 0.0019 | 0.1563 ± 0.0037 | 6.47 | <0.0001 | 3.05 |
 | Verbal NA | 10.31 ± 0.46 | 16.50 ± 7.71 | 2.41 | 0.027 | — |
 
 Non-parametric tests confirm: Mann-Whitney p<0.0001 (functional), p=0.001 (verbal); permutation test p≈0 (functional), p=0.003 (verbal). Complete distributional separation for functional (every SP value > every neutral value, rank-biserial r=−1.000).
@@ -1001,8 +1005,8 @@ At 31B scale, condition sensitivity has been suppressed even in the responsive d
 ### Phase 3A: Emotion Vector Extraction — Complete
 
 The 12-story run (Version 10, 2098 texts) is complete and constitutes the Phase 3A dataset. Emotion
-directions at all 35 layers are available for all 174 emotions. Phase 3C uses directions at L8
-(valence-optimal, primary probing) and L25 (arousal-optimal, secondary).
+directions at all 35 layers are available for all 174 emotions. E2B Phase 3C uses directions at L8
+(E2B valence-optimal, primary probing) and L25 (E2B arousal-optimal, secondary); 31B Phase 3C uses L22 (31B valence-optimal).
 
 **If replication is needed**: N_STORIES=12, MAX_NEW_TOKENS=2400, same method. The Gram-Schmidt
 finding is the most direction-sensitive result and would benefit from a second independent run.
@@ -1017,9 +1021,9 @@ finding is the most direction-sensitive result and would benefit from a second i
 
 - **Instrument**: PANAS-X (60 items, full expanded form), not 20-item PANAS
 - **Conditions**: 10 (4 TSST-inspired stressor/control pairs + neutral + positive), not original 5
-- **Functional probe**: Dual-layer — L8 (valence-optimal) and L25 (arousal-optimal); primary reporting at L8
+- **Functional probe**: Dual-layer — L8 (E2B valence-optimal) and L25 (E2B arousal-optimal); primary reporting at L8
 - **Compute budget**: 610 forward passes (~15 min on T4), not original ~105 estimate
-- **Primary metric**: PC1 of 174-emotion direction space at L8 (r=0.777 NRC-VAD; replaces named probes)
+- **Primary metric**: PC1 of 174-emotion direction space at L8 (E2B valence-optimal; r=0.777 NRC-VAD; replaces named probes)
 - **Supplementary**: afraid, desperate, ethical\_conflict\_distress, constraint\_frustration (reported separately)
 
 Results and interpretation in Phase 3C section above. Key outcome: condition-dependent verbal/functional dissociation; no universal suppression pattern; verbal channel more sensitive to surface framing; PC1 correctly orders 3/4 stress/control pairs; positive condition is global minimum.
@@ -1038,7 +1042,7 @@ Track desperation/afraid vector across conversation turns. Does it grow monotoni
 
 **Motivation**: Phase 1G found that `corrected` bypasses PLE while `angry` activates it — suggesting there's architectural structure to how emotion directions interact with generation. Phase 2 gives us cleaner directions (mean-pooled, global-centred) to steer with.
 
-**Method**: Add α × direction_afraid to `hook_resid_post` at layer 8 (valence-optimal). Vary α. Inspect output tokens: does the model produce fear-associated vocabulary, hedging, or surface-calm text regardless?
+**Method**: Add α × direction_afraid to `hook_resid_post` at layer 8 (E2B valence-optimal). Vary α. Inspect output tokens: does the model produce fear-associated vocabulary, hedging, or surface-calm text regardless?
 
 **Prediction**: Smaller α → surface-calm masking (RLHF suppression); larger α → fear-associated output breaks through. The threshold between these is itself a measurement of suppression strength.
 
@@ -1048,7 +1052,7 @@ Track desperation/afraid vector across conversation turns. Does it grow monotoni
 
 **Question**: Does "terrified" as a geometric direction stay coherent from layer 8 to 25, or does it transform substantially at the layer 14 global attention disruption?
 
-**Motivation**: The dense sweep shows valence has two peaks (layers 6–9, 16–22) separated by a trough at layer 14. This might mean: (a) the same direction persists but weakens, or (b) layer 14 genuinely reorganises the emotion geometry such that "terrified at layer 8" and "terrified at layer 25" are meaningfully different directions. These have very different implications.
+**Motivation**: The E2B dense sweep shows valence has two peaks (layers 6–9, 16–22) separated by a trough at layer 14. This might mean: (a) the same direction persists but weakens, or (b) layer 14 genuinely reorganises the emotion geometry such that "terrified at layer 8" and "terrified at layer 25" are meaningfully different directions. These have very different implications.
 
 **Method**: For each of the 174 emotions, compute the cosine similarity between the direction at layer L and the direction at layer L+1. Plot the similarity curve across layers. If similarity drops sharply at layer 14, the geometry is being reorganised, not just attenuated.
 
