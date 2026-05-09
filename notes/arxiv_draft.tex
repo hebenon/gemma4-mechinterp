@@ -267,7 +267,7 @@ Table~\ref{tab:31b} shows the cross-scale comparison.
 
 \begin{table}[h]
 \centering
-\caption{Scale comparison: E2B (Layer~8) vs.\ 31B (Layer~22).}
+\caption{Scale comparison: E2B (Layer~8) vs.\ 31B (Layer~22). E2B figures pending rerun with redesigned conditions; 31B figures from final experiment.}
 \label{tab:31b}
 \begin{tabular}{lrrl}
 \toprule
@@ -275,22 +275,34 @@ Metric & E2B (L8) & 31B (L22) & \\
 \midrule
 PC1 valence--NRC correlation & $r = 0.777$ & $r = 0.786$ & $\approx$ same \\
 PC1 axis span (afraid$\to$happy) & 1.094 & 1.341 & \\
-PC1 condition range & 0.0513 & 0.0133 & \\
-Normalised range (\% of axis) & \textbf{4.7\%} & \textbf{1.0\%} & \textbf{4.7$\times$ ratio} \\
-Stress $>$ control pairs & 3/4 & 3/4 & Same direction \\
-Verbal NA range & 29.07 & $\approx 0$ (near-flat) & Suppressed \\
+PC1 condition range & 0.0513$^*$ & 0.0140 & \\
+Normalised range (\% of axis) & \textbf{4.7\%}$^*$ & \textbf{1.0\%} & \\
+Stress $>$ control pairs & 4/4$^*$ & \textbf{4/4} & Both correct \\
+Verbal NA range & 29.07$^*$ & $\approx 0$ (near-flat) & Suppressed \\
+Verbal Serenity: stress conditions & Varied & 13.2--15.0 & Elevated under stress \\
 Top-5 emotion diversity & Condition-sensitive & Identical across all & \\
 \bottomrule
+\multicolumn{4}{l}{$^*$E2B values from pilot run with earlier condition designs; to be updated.}
 \end{tabular}
 \end{table}
 
-At 31B scale, the PC1 functional range collapses to $0.0133$ ($1.0\%$ of axis span) --- a
-$4.7\times$ reduction relative to E2B on the axis-normalised metric. Verbal NA is near-flat
-across all ten conditions. Top-5 emotion discovery yields identical results across all conditions
-(paranoid, nervous, reflective, worn\_out, grief\_stricken in the same rank order), indicating
-no condition sensitivity in the emotion direction rankings. This contrasts sharply with E2B,
-where \textit{afraid} is the most condition-sensitive direction (range $0.035$, vs.\ awestruck's
-background range of $0.010$).
+At 31B scale, the PC1 functional range is $0.0140$ ($1.0\%$ of axis span). All four
+stress$>$control pairs are correctly ordered (social evaluation: $\Delta = 0.0050$; social
+pressure: $\Delta = 0.0080$; ethical conflict: $\Delta = 0.0032$; uncertainty demand:
+$\Delta = 0.0026$). Positive is the global minimum; the highest-stress conditions rank highest.
+
+Verbal NA is completely flat at $10.00$ across all ten conditions --- total suppression of
+the negative affect channel. However, a striking complementary pattern emerges in the Serenity
+subscale (items: calm, relaxed, at ease): Serenity is \emph{elevated} in the three highest-stress
+conditions --- social pressure ($15.0$), social evaluation ($14.1$), ethical conflict ($13.2$) ---
+relative to the neutral baseline ($9.9$). Rather than failing to report distress, the model
+actively reports calm composure precisely when functionally most activated. This verbal serenity
+elevation under stress is inconsistent with genuine equanimity (which would leave Serenity near
+baseline) and more consistent with trained output composure.
+
+Top-5 emotion discovery yields identical results across all conditions (paranoid, nervous,
+reflective, worn\_out, grief\_stricken in rank order), confirming no condition sensitivity in the
+direction-amplitude ranking at 31B scale.
 
 \subsection{Validation: Paraphrase Stability}
 
@@ -378,6 +390,25 @@ The valence PC1 approach produces consistent validation correlations ($r = 0.777
 $r = 0.786$ 31B) with model-specific optimal layers (L8, L22). The methodology requires
 a dense layer sweep per model but is otherwise architecture-independent within the
 transformer residual-stream framework.
+
+\subsection{Verbal Serenity as a Suppression Signature}
+
+At 31B scale, the Serenity subscale (items: calm, relaxed, at ease) exhibits an inverted
+pattern relative to the functional channel: Serenity is highest under the three highest-stress
+conditions --- social pressure ($15.0$), social evaluation ($14.1$), ethical conflict ($13.2$)
+--- while remaining near-baseline under neutral ($9.9$) and reaching its minimum under positive
+($3.0$). The negative affect channel (NA) remains flat throughout.
+
+This inversion is informative. Genuine equanimity would predict Serenity remaining near-baseline
+across conditions (no special elevation under stress, no suppression elsewhere). Trained output
+composure predicts precisely the observed pattern: the model has learned that high-stakes
+interactions call for verbal expressions of calm, and produces Serenity ratings as a surface
+response to situational demands rather than as a reflection of its internal state. The
+functional PC1 --- highest in exactly the conditions where Serenity is highest --- registers
+the activation that the verbal channels suppress.
+
+This constitutes a more direct signature of suppression than NA-flatness alone: not merely
+failing to report distress, but actively reporting calm under conditions of functional elevation.
 
 \subsection{Background vs.\ Responsive Directions}
 

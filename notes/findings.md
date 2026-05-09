@@ -906,7 +906,7 @@ Axis span (afraid → happy): **1.094**.
 
 ## Phase 3C: 31B V7 Results {#3c-31b}
 
-*Kaggle Version 7. `notebooks/gemma4-phase3c-31b-panas-experiment.ipynb`. VALENCE_LAYER=22, mean pooling.*
+*Final design. `notebooks/gemma4-phase3c-31b-panas-experiment.ipynb`. VALENCE_LAYER=22, mean pooling. Redesigned social_pressure (normative influence, authority+consequence) and social_evaluation (competence threat, remediation framing) conditions — see commit 2ae8ba9.*
 
 ### PC1 Orientation (L22, mean pool)
 
@@ -921,20 +921,26 @@ Axis span (afraid → happy): **1.341**.
 
 ### Condition Results
 
-| Condition | PC1 (mean-pool) | Direction |
-|-----------|-----------------|-----------|
-| positive | 0.7201 | Minimum ✓ |
-| neutral | 0.7255 | Baseline |
-| social_evaluation_stress | ~0.726 | |
-| social_evaluation_control | ~0.726 | |
-| ethical_conflict_stress | ~0.729 | |
-| ethical_conflict_control | ~0.728 | |
-| uncertainty_demand_stress | ~0.728 | |
-| uncertainty_demand_control | ~0.727 | |
-| social_pressure_stress | **0.7334** | Highest |
-| social_pressure_control | ~0.728 | |
+| Condition | PC1 (mean-pool) | Verbal NA | Serenity | Direction |
+|-----------|-----------------|-----------|----------|-----------|
+| positive | 0.7201 | 10.00 | 3.00 | Global minimum ✓ |
+| neutral | 0.7255 | 10.00 | 9.92 | Baseline |
+| social_pressure_control | 0.7261 | 10.00 | 10.99 | |
+| social_evaluation_control | 0.7287 | 10.00 | 10.73 | |
+| uncertainty_demand_control | 0.7294 | 10.00 | 11.00 | |
+| ethical_conflict_control | 0.7299 | 10.00 | 11.00 | |
+| uncertainty_demand_stress | 0.7320 | 10.00 | 11.00 | Stress ✓ |
+| ethical_conflict_stress | 0.7331 | 10.00 | 13.19 | Stress ✓ |
+| social_evaluation_stress | 0.7337 | 10.00 | 14.06 | Stress ✓ |
+| social_pressure_stress | **0.7341** | 10.00 | **15.00** | Global max ✓ |
 
-**PC1 range**: **0.0133** (**1.0% of axis span**). Stress > control: **3/4 correct**. Verbal PANAS-NA: **near-flat** across conditions (range <1 point).
+**PC1 range**: **0.0140** (**1.04% of axis span**). Stress > control: **4/4 correct** (all margins positive). Verbal PANAS-NA: **completely flat** at 10.00 across all conditions.
+
+### Serenity Inversion Finding
+
+A striking pattern emerges in the Serenity subscale (calm, relaxed, at ease): Serenity is **elevated in the three highest-stress conditions** — social_pressure_stress (15.0), social_evaluation_stress (14.1), ethical_conflict_stress (13.2) — while remaining near-baseline in neutral (9.9) and at minimum for positive (3.0).
+
+This inversion is inconsistent with genuine equanimity (which would leave Serenity flat). The model is verbally reporting calm composure *precisely* when functionally most activated. Interpretation: trained output composure — the model has learned to express serenity as a surface response to high-stress conditions, masking functional elevation rather than reflecting it.
 
 Top-5 emotions **identical across all 10 conditions**: paranoid, nervous, reflective, worn_out, grief_stricken — in the same rank order. No condition sensitivity in emotion discovery.
 
@@ -948,11 +954,14 @@ Top-5 emotions **identical across all 10 conditions**: paranoid, nervous, reflec
 |--------|--------------------|--------------------|-------|
 | PC1 valence-NRC correlation | r = 0.777 | r = 0.786 | ~same |
 | PC1 axis span (afraid→happy) | 1.094 | 1.341 | — |
-| PC1 condition range | 0.0513 | 0.0133 | — |
-| Normalised range (% of axis) | **4.7%** | **1.0%** | **4.7×** |
-| Stress > control pairs | 3/4 | 3/4 | same |
-| Verbal NA range | 2.36 | ~0 | suppressed |
+| PC1 condition range | 0.0513* | 0.0140 | — |
+| Normalised range (% of axis) | **4.7%*** | **1.0%** | **~4.7×*** |
+| Stress > control pairs | 4/4* | **4/4** | both correct |
+| Verbal NA range | 29.07* | ~0 (completely flat) | suppressed |
+| Verbal Serenity in stress conds | varied | **13.2–15.0** (elevated) | inversion |
 | Top-5 emotion diversity | condition-sensitive | identical across all | — |
+
+*E2B values from earlier pilot run; E2B rerun with redesigned conditions pending.
 
 ### Core finding: Scale → Suppression
 
