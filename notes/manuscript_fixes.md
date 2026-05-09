@@ -175,7 +175,7 @@ Range: 0.0513 (4.7% of axis span afraid→happy). Ethical conflict stress is now
 
 2. **Methodology description** — C2's "cosine projection using K=5 token positions" should become "cosine projection of the mean residual-stream vector over all token positions."
 
-3. **PANAS-NA verbal scores** — V15 shows verbal NA in the range 15.76–18.12. The V14 manuscript table shows values like 10.00 and 39.07, which suggests a different PANAS scoring instrument or subscale aggregation. **This discrepancy must be reconciled before submission.** Confirm: does V14 report total PANAS (20 items) or NA subscale (10 items)? Does V15?
+3. **PANAS-NA verbal scores** — **RESOLVED 2026-05-09.** Opus notebook review confirmed V15 verbal NA values are identical to V14 (10.00–39.07). The 15.76–18.12 figures previously noted here were erroneous (not produced by either notebook). No discrepancy; both versions use the same instrument.
 
 4. **Key qualitative comparison preserved**: positive < neutral < most stress conditions. 3/4 stress > control pairs correct. Ethical conflict stress is highest in both V14 and V15. The narrative holds; the numbers change.
 
@@ -195,7 +195,7 @@ Range: 0.0513 (4.7% of axis span afraid→happy). Ethical conflict stress is now
 | E1 | Missing | Add validation results section | after §3.3 |
 | F1 | Data (V15) | Replace all PC1 values in §3.3 table with V15 mean-pool values | 113–136 |
 | F2 | Methodology | Update "K=5 token positions" → "mean pooling over all positions" in §2.4 | 96 |
-| F3 | Reconcile | Confirm PANAS-NA scoring instrument consistency between V14 and V15 | 113–136 |
+| F3 | ~~Reconcile~~ | ~~Confirm PANAS-NA scoring~~ **RESOLVED** — V14 = V15, erroneous figures corrected | 113–136 |
 | D1 | Unverified | Anthropic PSM URL | 211 |
 | D2 | Unverified | Kumaran DOI | 229 |
 

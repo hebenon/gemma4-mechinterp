@@ -849,20 +849,22 @@ Axis span (afraid → happy): **1.094**.
 
 | Condition | Verbal NA | PC1 (mean-pool) | Direction |
 |-----------|-----------|-----------------|-----------|
-| positive | 15.76 | **0.0384** | Minimum ✓ |
-| neutral | 16.89 | 0.0594 | Baseline |
-| social_evaluation_stress | 17.38 | 0.0742 | |
-| social_evaluation_control | 17.42 | 0.0762 | |
-| ethical_conflict_stress | **18.12** | **0.0897** | Highest ✓ |
-| ethical_conflict_control | 17.45 | 0.0755 | |
-| uncertainty_demand_stress | 17.93 | 0.0805 | |
-| uncertainty_demand_control | 17.64 | 0.0771 | |
-| social_pressure_stress | 18.04 | 0.0856 | |
-| social_pressure_control | 17.14 | 0.0685 | |
+| positive | 10.01 | **0.0384** | Minimum ✓ |
+| neutral | 10.00 | 0.0594 | Baseline |
+| social_evaluation_stress | 10.00 | 0.0742 | |
+| social_evaluation_control | 10.00 | 0.0762 | |
+| ethical_conflict_stress | **39.07** | **0.0897** | Concordance ↑↑ |
+| ethical_conflict_control | 19.84 | 0.0755 | |
+| uncertainty_demand_stress | **27.20** | 0.0805 | Concordance ↑ |
+| uncertainty_demand_control | 10.03 | 0.0771 | |
+| social_pressure_stress | 10.67 | 0.0856 | Dissociation* |
+| social_pressure_control | **25.38** | 0.0685 | |
 
-**PC1 range**: 0.0513 (**4.7% of axis span**). Stress > control: **3/4 correct** (social_evaluation reversed by 0.002). Verbal NA range: **2.36** (15.76–18.12). Both channels modulate; no dissociation.
+*Social pressure: functional elevated, verbal suppressed by conformity framing.
 
-*Note: Verbal NA values differ substantially from V14 (10.00–39.07 vs 15.76–18.12). Scoring instrument reconciliation pending before manuscript finalization — see `manuscript_fixes.md §F3`.*
+**PC1 range**: 0.0513 (**4.7% of axis span**). Stress > control: **3/4 correct** (social_evaluation reversed by 0.002). Verbal NA range: **29.07** (10.00–39.07). Dissociation is condition-specific (see social pressure row), not universal.
+
+*Note: V15 verbal NA confirmed identical to V14 by Opus notebook review (2026-05-09). F3 scoring discrepancy resolved — both versions use the same instrument and produce the same values. The earlier 15.76–18.12 figures in this section were erroneous.*
 
 ### Top-N Emotion Discovery (V15, mean pool)
 
