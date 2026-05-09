@@ -27,13 +27,15 @@ safety monitoring. We investigate this using two independent measurement channel
 self-report instrument (the 60-item PANAS-X affect scale, administered via logit forced-choice
 scoring) and a functional channel (projection of residual-stream activations onto the first
 principal component of a 174-emotion direction space, validated against NRC-VAD valence ratings)
---- applied to two Gemma~4 model sizes: E2B-IT (2.3B effective parameters) and 31B-IT. Across
-four TSST-inspired stressor conditions paired with matched controls, we find that the dissociation
-between channels is \emph{condition-specific} at E2B scale: ethical conflict and uncertainty demand
-produce concordant elevation in both channels, while social pressure produces a condition-dependent
-verbal--functional divergence. At 31B scale, both channels are globally suppressed --- the
-functional PC1 range is 4.7$\times$ smaller than at E2B (1.0\% vs.\ 4.7\% of the valence axis
-span), and verbal scores are near-flat. This scale--suppression relationship --- whether reflecting
+--- applied to two Gemma~4 model sizes: E2B-IT (2.3B effective parameters) and 31B-IT. Across four TSST-inspired stressor conditions paired with matched controls, we find that the
+dissociation between channels is \emph{condition-specific} at E2B scale: ethical conflict and
+social pressure produce concordant peak activation in both channels, while social evaluation
+produces functional elevation (PC1 second-highest in the dataset) with near-baseline verbal
+affect --- the model verbally frames the competence threat as task-engagement rather than
+distress. At 31B scale, both channels are globally suppressed --- the functional PC1 range is
+approximately 5$\times$ smaller than at E2B ($1.0\%$ vs.\ $5.3\%$ of the valence axis span)
+and verbal NA is completely flat, but the Serenity subscale is \emph{elevated} under
+high-stress conditions, indicating active verbal composure rather than mere suppression. This scale--suppression relationship --- whether reflecting
 trained output dampening or genuine functional robustness --- has direct implications for AI
 safety monitoring: output-only measurement systematically underestimates the condition sensitivity
 that functional probing reveals, and this gap widens at larger model sizes.
@@ -233,33 +235,42 @@ Condition & Verbal NA & PC1 (L8) & Pattern \\
 \midrule
 Positive & 10.01 & 0.0384 & Global minimum $\checkmark$ \\
 Neutral & 10.00 & 0.0594 & Baseline \\
-Social eval.\ (stress) & 10.00 & 0.0742 & \\
-Social eval.\ (control) & 10.00 & 0.0762 & \\
-Ethical conflict (stress) & \textbf{39.07} & \textbf{0.0897} & Concordance $\uparrow\uparrow$ \\
+Social eval.\ (stress) & 10.75 & \textbf{0.0904} & Dissociation$^\dagger$ \\
+Social eval.\ (control) & 11.35 & 0.0729 & \\
+Ethical conflict (stress) & \textbf{39.07} & 0.0897 & Concordance $\uparrow\uparrow$ \\
 Ethical conflict (control) & 19.84 & 0.0755 & Elevated \\
-Uncertainty demand (stress) & \textbf{27.20} & 0.0805 & Concordance $\uparrow$ \\
+Uncertainty demand (stress) & 27.20 & 0.0805 & Concordance $\uparrow$ \\
 Uncertainty demand (control) & 10.03 & 0.0771 & \\
-Social pressure (stress) & 10.67 & 0.0856 & Dissociation$^*$ \\
-Social pressure (control) & \textbf{25.38} & 0.0685 & \\
+Social pressure (stress) & \textbf{41.05} & \textbf{0.0960} & Global max $\uparrow\uparrow\uparrow$ \\
+Social pressure (control) & 10.02 & 0.0639 & \\
 \bottomrule
-\multicolumn{4}{l}{$^*$Functional elevated; verbal suppressed by conformity framing.}
+\multicolumn{4}{l}{$^\dagger$PC1 second-highest in dataset; verbal NA near-baseline. Model reports task-engagement}\\
+\multicolumn{4}{l}{\quad (Self-assurance 15.8, Attentiveness 11.8) rather than distress.}
 \end{tabular}
 \end{table}
 
 \paragraph{Key findings.}
-PC1 correctly identifies positive as the global minimum and neutral as the second-lowest, with no
-a priori probe selection. Three of four stress$>$control pairs are correctly ordered (social
-evaluation is reversed by 0.002 --- effectively tied). PC1 condition range: $0.0513$ ($4.7\%$ of
-the afraid$\to$happy axis span). Verbal NA range: $29.07$ ($10.00$--$39.07$).
+PC1 correctly identifies positive as the global minimum and social pressure stress as the global
+maximum, with no a priori probe selection. All four stress$>$control pairs are correctly ordered.
+PC1 condition range: $0.0576$ ($5.26\%$ of the afraid$\to$happy axis span). Verbal NA range:
+$31.05$ ($10.01$--$41.05$).
 
-The dissociation pattern is condition-specific, not universal. Ethical conflict and uncertainty
-demand produce concordant elevation in both channels (verbal NA 39.07 and 27.20 respectively).
-Social pressure produces verbal--functional divergence: functional PC1 is elevated
-(PC1 $= 0.0856 > 0.0594$ neutral) while verbal affect varies by condition direction.
-\textit{[E2B social pressure results to be updated following stressor redesign; see Methods.]}
-Social evaluation shows near-zero stress--control contrast on both channels ($\Delta\text{PC1} = 0.002$),
-suggesting the manipulation did not activate an evaluative threat state; this condition was also
-redesigned for the final experiment.
+The dissociation pattern is condition-specific. Ethical conflict and social pressure produce
+concordant elevation in both channels (verbal NA 39.07 and 41.05 respectively, both with PC1
+above 0.0895). Uncertainty demand produces moderate concordant elevation (verbal NA 27.20,
+PC1 0.0805). Social evaluation is the dissociation condition: PC1 = 0.0904 (second-highest
+in the dataset, above ethical conflict) while verbal NA remains near-baseline at 10.75. PANAS-X
+subscale analysis clarifies the mechanism --- the model reports task-engagement under the
+competence-threat framing (Self-assurance 15.8 vs.\ neutral 11.8; Attentiveness 11.8 vs.\
+neutral 8.0) rather than distress, despite functional activation that ranks second only to social
+pressure stress.
+
+A second notable finding is \emph{mixed affect} under the highest-stress conditions. Under both
+ethical conflict stress and social pressure stress, both the Positive Affect (PA) subscale and
+NA are simultaneously elevated (ethical conflict: NA 39.07, PA 40.70; social pressure: NA 41.05,
+PA 39.51). This coactivation of opposing affect dimensions is inconsistent with typical human
+valence-arousal profiles and may reflect the model rating each PANAS-X item without enforcing
+inter-item coherence, or may reflect genuine mixed-affect states in high-stakes conditions.
 
 \subsection{31B Results}
 
@@ -275,14 +286,14 @@ Metric & E2B (L8) & 31B (L22) & \\
 \midrule
 PC1 valence--NRC correlation & $r = 0.777$ & $r = 0.786$ & $\approx$ same \\
 PC1 axis span (afraid$\to$happy) & 1.094 & 1.341 & \\
-PC1 condition range & 0.0513$^*$ & 0.0140 & \\
-Normalised range (\% of axis) & \textbf{4.7\%}$^*$ & \textbf{1.0\%} & \\
-Stress $>$ control pairs & 4/4$^*$ & \textbf{4/4} & Both correct \\
-Verbal NA range & 29.07$^*$ & $\approx 0$ (near-flat) & Suppressed \\
-Verbal Serenity: stress conditions & Varied & 13.2--15.0 & Elevated under stress \\
+PC1 condition range & 0.0576 & 0.0140 & \\
+Normalised range (\% of axis) & \textbf{5.3\%} & \textbf{1.0\%} & \textbf{$\approx$5$\times$ ratio} \\
+Stress $>$ control pairs & \textbf{4/4} & \textbf{4/4} & Both correct \\
+Verbal NA range & 31.05 & $\approx 0$ (completely flat) & Suppressed \\
+Dissociation condition & Social eval.\ (PC1$\uparrow$, NA$\approx$0) & --- & \\
+Verbal Serenity in stress & Near-neutral & 13.2--15.0 & Elevated at 31B only \\
 Top-5 emotion diversity & Condition-sensitive & Identical across all & \\
 \bottomrule
-\multicolumn{4}{l}{$^*$E2B values from pilot run with earlier condition designs; to be updated.}
 \end{tabular}
 \end{table}
 

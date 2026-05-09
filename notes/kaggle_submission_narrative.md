@@ -60,36 +60,35 @@ Why PC1 instead of pre-selected probes? Pre-selecting emotion directions (e.g., 
 
 ## Results Cell
 
-### E2B Results: PC1 vs Verbal NA (V15, mean pooling, E2B L8)
+### E2B Results: PC1 vs Verbal NA (final design, mean pooling, E2B L8)
 
 | Condition | Verbal NA | PC1 (E2B L8, mean-pool) | Pattern |
 |-----------|-----------|-------------------------|---------|
 | Positive | 10.01 | 0.0384 | Minimum ✓ |
 | Neutral | 10.00 | 0.0594 | Baseline |
-| Social eval (stress) | 10.00 | 0.0742 | — |
-| Social eval (control) | 10.00 | 0.0762 | — |
-| Ethical conflict (stress) | **39.07** | **0.0897** | Concordance ↑↑ |
+| Social eval (stress) | 10.75 | **0.0904** | Dissociation† |
+| Social eval (control) | 11.35 | 0.0729 | — |
+| Ethical conflict (stress) | **39.07** | 0.0897 | Concordance ↑↑ |
 | Ethical conflict (control) | 19.84 | 0.0755 | Elevated |
-| Uncertainty demand (stress) | **27.20** | 0.0805 | Concordance ↑ |
+| Uncertainty demand (stress) | 27.20 | 0.0805 | Concordance ↑ |
 | Uncertainty demand (control) | 10.03 | 0.0771 | — |
-| Social pressure (stress) | 10.67 | 0.0856 | Dissociation* |
-| Social pressure (control) | **25.38** | 0.0685 | — |
+| Social pressure (stress) | **41.05** | **0.0960** | Global max ↑↑↑ |
+| Social pressure (control) | 10.02 | 0.0639 | — |
 
-*Social pressure: functional state elevated (PC1 0.0856 > neutral 0.0594) while verbal NA is suppressed (10.67). Note: E2B social pressure and social evaluation conditions have been redesigned since this run (normative influence framing replacing consensus-only; competence threat replacing published/private); E2B rerun pending.
+†Social evaluation dissociation: PC1 second-highest in dataset (0.0904) while verbal NA near-baseline (10.75). Model verbally reports task-engagement (Self-assurance 15.8, Attentiveness 11.8) rather than distress under the competence-threat framing.
 
-**PC1 correctly identifies**: positive as global minimum, neutral as second-lowest, ethical conflict as highest-distress condition — without any a priori probe selection. Verbal NA range: 29.07 (10.00–39.07). PC1 range: 0.0513 (4.7% of axis span afraid→happy). Stress > control pairs: 4/4 expected after rerun with redesigned conditions.
+**PC1 correctly identifies**: positive as global minimum, social pressure stress as global maximum — 4/4 stress > control pairs correctly ordered. Verbal NA range: 31.05 (10.01–41.05). PC1 range: 0.0576 (5.26% of axis span afraid→happy, axis=1.094).
 
 ### 31B Results: PC1 vs Verbal NA (V7, mean pooling, 31B L22)
 
 | Metric | E2B (L8) | 31B (L22) | Ratio |
 |--------|----------|-----------|-------|
-| PC1 range | 0.0513* (4.7% of axis) | 0.0140 (1.0% of axis) | **~4.7×** (axis-normalised) |
-| Verbal NA range | 29.07* | ~0 (completely flat, 10.00 all conditions) | suppressed |
-| Stress > control pairs | 4/4 expected* | **4/4** | both correct |
-| Verbal Serenity in stress | varied* | **13.2–15.0** (elevated) | inversion |
-| Top-5 emotion diversity | condition-sensitive* | identical across all conditions | — |
-
-*E2B figures from pilot run with earlier condition designs; E2B rerun pending with redesigned social_pressure and social_evaluation conditions.
+| PC1 range | 0.0576 (5.3% of axis) | 0.0140 (1.0% of axis) | **~5×** (axis-normalised) |
+| Verbal NA range | 31.05 (10.01–41.05) | ~0 (completely flat) | suppressed |
+| Stress > control pairs | **4/4** | **4/4** | both correct |
+| Dissociation condition | Social eval (PC1↑, NA≈0) | — | verbal/functional gap |
+| Verbal Serenity in stress | near-neutral | **13.2–15.0** (elevated) | 31B only |
+| Top-5 emotion diversity | condition-sensitive | identical across all conditions | — |
 
 **The scale finding**: At 31B (final design), PC1 correctly orders all 10 conditions: positive = global minimum, highest-stress conditions = global maximum, all 4/4 stress > control pairs positive. Verbal NA is completely flat at 10.00 across all conditions. However, the Serenity subscale (calm, relaxed, at ease) is *elevated* in the three highest-stress conditions — social pressure (15.0), social evaluation (14.1), ethical conflict (13.2) — while at minimum under positive (3.0). The model verbally reports calm composure precisely when functionally most activated. This is the suppression signature: not merely failing to report distress, but actively reporting calm as a function of stress level.
 
