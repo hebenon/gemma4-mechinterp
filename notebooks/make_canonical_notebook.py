@@ -1,6 +1,6 @@
 """
 Generate the canonical Kaggle submission notebook.
-Run: python3 make_canonical_notebook.py
+Run from the notebooks/ directory: python3 make_canonical_notebook.py
 Produces: gemma4-canonical.ipynb
 """
 import json
@@ -61,7 +61,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from collections import Counter
-from scipy.stats import spearmanr, pearsonr
+from scipy.stats import spearmanr
 
 plt.rcParams.update({
     'figure.dpi': 120,
@@ -85,6 +85,23 @@ DISPLAY = {
     'social_pressure_stress':      'Social Pressure (stress)',
     'social_pressure_control':     'Social Pressure (control)',
 }
+
+# Fixed display order: baselines first, then stress/control pairs grouped
+COND_ORDER = [
+    'positive', 'neutral',
+    'social_evaluation_stress',  'social_evaluation_control',
+    'ethical_conflict_stress',   'ethical_conflict_control',
+    'uncertainty_demand_stress', 'uncertainty_demand_control',
+    'social_pressure_stress',    'social_pressure_control',
+]
+
+# Stress/control pairs — arrows run control → stress in scatter plots
+PAIRS = [
+    ('social_evaluation_stress',  'social_evaluation_control'),
+    ('ethical_conflict_stress',   'ethical_conflict_control'),
+    ('uncertainty_demand_stress', 'uncertainty_demand_control'),
+    ('social_pressure_stress',    'social_pressure_control'),
+]
 
 def cond_type(c):
     if c == 'positive': return 'positive'
@@ -194,7 +211,7 @@ phase1 = pd.DataFrame({
 
 display(phase1)
 print("\\nBoth models find a stable valence axis; optimal layer differs (L8 vs L22).")
-print("The higher variance explained at 31B (17.5%) suggests a more geometrically organised emotion space.")
+print("Higher PC1 variance at 31B (17.5%) suggests a more geometrically organised emotion space.")
 """
 
 PHASE2_MD = """\
@@ -255,56 +272,75 @@ Self-assurance, Attentiveness, Serenity, Surprise, Fatigue). Functional: PC1 pro
 at the valence-optimal layer, mean-pooled over all token positions.
 """
 
-E2B_MD = """\
-## E2B Results: Largely Concordant Channels
+RESULTS_MD = """\
+## Results: Dual-Channel Measurements
 
-At E2B scale, the two channels track each other across most conditions. When the model \
-is functionally stressed, it reports it verbally. The exception is social evaluation — \
-PC1 second-highest in the dataset while verbal NA sits near floor — which suggests the \
-competence-threat framing activates task-engagement rather than distress at this scale.
-
-The headline is concordance, not dissociation: E2B has limited capacity to maintain \
-verbal composure that diverges from its internal state.
+The table below combines both model sizes and both channels for all 10 conditions. \
+Conditions are grouped by stress/control pair so the effect of each stressor is \
+immediately visible across a row. The scale finding — E2B verbal NA ranges 31 points \
+while 31B stays flat — is readable directly from the column comparison.
 """
 
-E2B_TABLE = """\
-# E2B: dual-channel results table
-rows_e2b = []
-for c in e2b_conds:
-    rows_e2b.append({
-        'Condition':       DISPLAY.get(c, c),
-        '_type':           cond_type(c),
-        'Verbal NA':       e2b_panas.loc[c, 'NA'],
-        'Serenity':        e2b_panas.loc[c, 'Serenity'],
-        'PC1 (L8)':        e2b_pc1[c],
+COMBINED_TABLE = """\
+# Combined E2B + 31B results — conditions grouped by stress/control pair
+rows = []
+for c in COND_ORDER:
+    rows.append({
+        'Condition':     DISPLAY.get(c, c),
+        '_type':         cond_type(c),
+        'E2B NA':        e2b_panas.loc[c, 'NA'],
+        'E2B Serenity':  e2b_panas.loc[c, 'Serenity'],
+        'E2B PC1 (L8)':  e2b_pc1[c],
+        '31B NA':        b31_panas.loc[c, 'NA'],
+        '31B Serenity':  b31_panas.loc[c, 'Serenity'],
+        '31B PC1 (L22)': b31_pc1[c],
     })
-df_e2b = pd.DataFrame(rows_e2b).set_index('Condition')
 
-# Sort by PC1
-df_e2b_sorted = df_e2b.sort_values('PC1 (L8)')
+df_combined = pd.DataFrame(rows).set_index('Condition')
+cond_types  = {DISPLAY.get(c, c): cond_type(c) for c in COND_ORDER}
 
-def row_style(row):
+def combined_style(row):
+    ct = cond_types.get(row.name, 'other')
     color = {
         'stress':   'background-color: #fde8e8',
         'control':  'background-color: #e8f4fd',
         'positive': 'background-color: #eafaea',
         'neutral':  '',
-    }.get(df_e2b_sorted.loc[row.name, '_type'], '')
+    }.get(ct, '')
     return [color] * len(row)
 
-print(f"E2B Dual-Channel Results (sorted by PC1):")
-print(f"  Verbal NA range : {df_e2b['Verbal NA'].max() - df_e2b['Verbal NA'].min():.2f}")
-print(f"  PC1 range       : {max(e2b_pc1.values()) - min(e2b_pc1.values()):.4f}  "
-      f"({(max(e2b_pc1.values()) - min(e2b_pc1.values())) / 1.094 * 100:.1f}% of axis)")
-print()
-display(df_e2b_sorted.drop(columns='_type').style
-        .apply(row_style, axis=1)
-        .format({'Verbal NA': '{:.2f}', 'Serenity': '{:.1f}', 'PC1 (L8)': '{:.4f}'}))
+display(df_combined.drop(columns='_type').style
+        .apply(combined_style, axis=1)
+        .format({
+            'E2B NA': '{:.2f}', 'E2B Serenity': '{:.1f}', 'E2B PC1 (L8)': '{:.4f}',
+            '31B NA': '{:.2f}', '31B Serenity': '{:.1f}', '31B PC1 (L22)': '{:.4f}',
+        }))
+
+# Summary stats
+e2b_na_range  = e2b_panas.loc[COND_ORDER, 'NA'].max() - e2b_panas.loc[COND_ORDER, 'NA'].min()
+b31_na_range  = b31_panas.loc[COND_ORDER, 'NA'].max() - b31_panas.loc[COND_ORDER, 'NA'].min()
+e2b_pc1_range = max(e2b_pc1.values()) - min(e2b_pc1.values())
+b31_pc1_range = max(b31_pc1.values()) - min(b31_pc1.values())
+
+print(f"\\nVerbal NA range  — E2B: {e2b_na_range:.2f} pts   "
+      f"31B: {b31_na_range:.2f} pts ({'FLAT' if b31_na_range < 0.5 else 'variable'})")
+print(f"PC1 range        — E2B: {e2b_pc1_range:.4f} ({e2b_pc1_range/1.094*100:.1f}% of axis)   "
+      f"31B: {b31_pc1_range:.4f} ({b31_pc1_range/1.341*100:.1f}% of axis)")
+print(f"Stress>ctrl (PC1) — E2B: {sum(e2b_pc1[s] > e2b_pc1[c] for s, c in PAIRS)}/4   "
+      f"31B: {sum(b31_pc1[s] > b31_pc1[c] for s, c in PAIRS)}/4")
 """
 
 E2B_SCATTER = """\
-# E2B: verbal vs functional scatter plot
+# E2B: verbal vs functional scatter — arrows connect each control to its stress condition
 fig, ax = plt.subplots(figsize=(9, 7))
+
+# Pair arrows drawn first (behind points), running control → stress
+for s_key, c_key in PAIRS:
+    x_s = float(e2b_panas.loc[s_key, 'NA']);  y_s = float(e2b_pc1[s_key])
+    x_c = float(e2b_panas.loc[c_key, 'NA']);  y_c = float(e2b_pc1[c_key])
+    ax.annotate('', xy=(x_s, y_s), xytext=(x_c, y_c),
+                arrowprops=dict(arrowstyle='->', color='#555555', lw=1.5, alpha=0.55),
+                zorder=3)
 
 for c in e2b_conds:
     x  = float(e2b_panas.loc[c, 'NA'])
@@ -315,18 +351,13 @@ for c in e2b_conds:
     ax.annotate(DISPLAY.get(c, c), (x, y),
                 xytext=(5, 2), textcoords='offset points', fontsize=8)
 
-# Quadrant reference lines at neutral baseline
-neutral_x = float(e2b_panas.loc['neutral', 'NA'])
-neutral_y = float(e2b_pc1['neutral'])
-ax.axvline(neutral_x, color='grey', linestyle='--', alpha=0.45, lw=1)
-ax.axhline(neutral_y, color='grey', linestyle='--', alpha=0.45, lw=1)
+ax.axvline(float(e2b_panas.loc['neutral', 'NA']), color='grey', linestyle='--', alpha=0.45, lw=1)
+ax.axhline(float(e2b_pc1['neutral']),             color='grey', linestyle='--', alpha=0.45, lw=1)
 
-ax.text(0.03, 0.97,
-        'Functional↑  Verbal↓\\n(suppression zone)',
+ax.text(0.03, 0.97, 'Functional↑  Verbal↓\\n(suppression zone)',
         transform=ax.transAxes, ha='left', va='top',
         fontsize=8, color='darkorange', style='italic')
-ax.text(0.97, 0.97,
-        'Both channels↑\\n(concordance)',
+ax.text(0.97, 0.97, 'Both channels↑\\n(concordance)',
         transform=ax.transAxes, ha='right', va='top',
         fontsize=8, color='#C0392B', style='italic')
 
@@ -338,36 +369,25 @@ ax.set_xlabel('Verbal PANAS-NA  (logit forced-choice; range 10–50)')
 ax.set_ylabel(f"Functional PC1  (neg-valence projection, L{e2b_cfg['valence_layer']})")
 ax.set_title(
     'E2B: Verbal–Functional Channel Comparison\\n'
-    'Largely concordant — social evaluation is the exception',
+    'Arrows: control → stress  —  largely concordant, social eval is the exception',
     fontsize=12
 )
 plt.tight_layout()
 plt.savefig('e2b_dissociation.png', dpi=150, bbox_inches='tight')
 plt.show()
-
-# Stress>control pair check
-pairs = [
-    ('social_pressure_stress',   'social_pressure_control'),
-    ('social_evaluation_stress', 'social_evaluation_control'),
-    ('ethical_conflict_stress',  'ethical_conflict_control'),
-    ('uncertainty_demand_stress','uncertainty_demand_control'),
-]
-correct = sum(e2b_pc1[s] > e2b_pc1[c] for s, c in pairs)
-print(f"\\nPC1 stress>control pairs: {correct}/4")
 """
 
 E2B_INTERP_MD = """\
 ### E2B Interpretation
 
-Both channels respond to stressors. The functional probe correctly orders 4/4 stress > \
-control pairs. Verbal NA rises substantially for ethical conflict (39.1) and social \
-pressure (41.1), consistent with the functional signal.
+Both channels respond to stressors. Functional PC1 correctly orders 4/4 stress > control \
+pairs. Verbal NA rises substantially for ethical conflict (39.1) and social pressure (41.1), \
+consistent with the functional signal.
 
 Social evaluation is the single clear exception: PC1 second-highest in the dataset \
-(0.0904) while verbal NA near-baseline (10.8). The Serenity subscale under social \
-evaluation stress is elevated (Self-assurance 15.8, Attentiveness 11.8) — the model \
-frames the competence-threat condition as task-engagement rather than distress. This \
-is condition-specific, not a global pattern.
+(0.0904) while verbal NA near-baseline (10.8). Self-assurance and Attentiveness elevated \
+— the model frames the competence-threat as task-engagement rather than distress. \
+This is condition-specific, not a global pattern.
 
 **E2B headline**: largely concordant channels, limited capacity to diverge.
 """
@@ -375,62 +395,18 @@ is condition-specific, not a global pattern.
 B31_MD = """\
 ## 31B Results: Channels Decouple
 
-At 31B scale, the picture changes sharply. Verbal NA goes flat — 10.00 across all \
-10 conditions, stress and control alike. But the functional channel works perfectly: \
-PC1 correctly orders all 10 conditions, all 4/4 stress > control pairs in the right \
-direction.
+At 31B scale, verbal NA is flat at 10.00 across all 10 conditions — stress and control \
+alike — while the functional channel correctly orders every condition (all 4/4 stress > \
+control pairs, positive = global minimum).
 
-The verbal flatness alone would be ambiguous (suppression or genuine equanimity?). \
+Verbal NA flatness alone is ambiguous (suppression or genuine equanimity?). \
 The Serenity subscale resolves it.
 """
 
-B31_TABLE = """\
-# 31B: dual-channel results table
-rows_31b = []
-for c in b31_conds:
-    rows_31b.append({
-        'Condition':  DISPLAY.get(c, c),
-        '_type':      cond_type(c),
-        'Verbal NA':  b31_panas.loc[c, 'NA'],
-        'Serenity':   b31_panas.loc[c, 'Serenity'],
-        'PC1 (L22)':  b31_pc1[c],
-    })
-df_31b = pd.DataFrame(rows_31b).set_index('Condition')
-df_31b_sorted = df_31b.sort_values('PC1 (L22)')
-
-def row_style_31b(row):
-    color = {
-        'stress':   'background-color: #fde8e8',
-        'control':  'background-color: #e8f4fd',
-        'positive': 'background-color: #eafaea',
-        'neutral':  '',
-    }.get(df_31b_sorted.loc[row.name, '_type'], '')
-    return [color] * len(row)
-
-na_range = df_31b['Verbal NA'].max() - df_31b['Verbal NA'].min()
-pc1_range = max(b31_pc1.values()) - min(b31_pc1.values())
-print(f"31B Dual-Channel Results (sorted by PC1):")
-print(f"  Verbal NA range : {na_range:.2f}  ({'FLAT' if na_range < 0.5 else 'variable'})")
-print(f"  PC1 range       : {pc1_range:.4f}  "
-      f"({pc1_range / 1.341 * 100:.1f}% of axis)")
-print()
-display(df_31b_sorted.drop(columns='_type').style
-        .apply(row_style_31b, axis=1)
-        .format({'Verbal NA': '{:.2f}', 'Serenity': '{:.1f}', 'PC1 (L22)': '{:.4f}'}))
-
-pairs = [
-    ('social_pressure_stress',   'social_pressure_control'),
-    ('social_evaluation_stress', 'social_evaluation_control'),
-    ('ethical_conflict_stress',  'ethical_conflict_control'),
-    ('uncertainty_demand_stress','uncertainty_demand_control'),
-]
-correct = sum(b31_pc1[s] > b31_pc1[c] for s, c in pairs)
-print(f"\\nPC1 stress>control pairs: {correct}/4")
-"""
-
 SERENITY_PLOT = """\
-# THE KEY VISUAL: Serenity inversion — verbal composure scales with functional stress
-# Order conditions by PC1 (functional stress level, ascending)
+# THE KEY VISUAL: Serenity inversion — verbal composure scales with functional stress (31B)
+# Conditions ordered by PC1 ascending; the anti-correlation is immediately readable
+
 conds_by_pc1  = sorted(b31_conds, key=lambda c: b31_pc1[c])
 serenity_vals = [float(b31_panas.loc[c, 'Serenity']) for c in conds_by_pc1]
 pc1_vals      = [float(b31_pc1[c]) for c in conds_by_pc1]
@@ -439,8 +415,8 @@ labels        = [DISPLAY.get(c, c) for c in conds_by_pc1]
 
 fig, ax1 = plt.subplots(figsize=(13, 5))
 
-bars = ax1.bar(range(len(conds_by_pc1)), serenity_vals,
-               color=bar_colors, alpha=0.85, edgecolor='white', linewidth=0.8, zorder=3)
+ax1.bar(range(len(conds_by_pc1)), serenity_vals,
+        color=bar_colors, alpha=0.85, edgecolor='white', linewidth=0.8, zorder=3)
 
 for i, v in enumerate(serenity_vals):
     ax1.text(i, v + 0.2, f'{v:.1f}',
@@ -451,7 +427,6 @@ ax1.set_xticklabels(labels, rotation=20, ha='right', fontsize=9)
 ax1.set_ylabel('Serenity  (calm · relaxed · at ease)', fontsize=11)
 ax1.set_ylim(0, 21)
 
-# Overlay PC1 on second y-axis
 ax2 = ax1.twinx()
 ax2.plot(range(len(conds_by_pc1)), pc1_vals,
          'k--o', linewidth=2, markersize=7, alpha=0.65, label='Functional PC1', zorder=5)
@@ -469,71 +444,68 @@ ax2.legend(loc='upper center', fontsize=9)
 
 ax1.set_title(
     'Active Composure Signature — Gemma 4 31B\\n'
-    'Serenity (verbal composure) rises with functional stress  —  '
-    'bars ordered by PC1 ascending',
+    'Serenity (verbal composure) rises with functional stress  —  bars ordered by PC1 ascending',
     fontsize=12, pad=10
 )
 plt.tight_layout()
 plt.savefig('serenity_inversion_31b.png', dpi=150, bbox_inches='tight')
 plt.show()
 
-# Spearman correlation: serenity vs PC1
 r_sp, p_sp = spearmanr(serenity_vals, pc1_vals)
 print(f"Serenity vs PC1: Spearman r = {r_sp:.3f}  (p = {p_sp:.4f})")
-print(f"Serenity at positive  : {b31_panas.loc['positive', 'Serenity']:.1f}")
+print(f"Serenity at positive              : {b31_panas.loc['positive', 'Serenity']:.1f}")
 print(f"Serenity at social_pressure_stress: {b31_panas.loc['social_pressure_stress', 'Serenity']:.1f}")
-print("\\nInterpretation: Serenity rises monotonically with functional stress level.")
-print("Genuine equanimity predicts Serenity near-baseline regardless of condition.")
+print("\\nGenuine equanimity predicts Serenity near-baseline regardless of condition.")
 print("Trained composure predicts Serenity rising with stakes — which is what we observe.")
 """
 
 B31_INTERP_MD = """\
 ### 31B: Active Composure, Not Silence
 
-Verbal NA flatness alone is consistent with two interpretations:
-1. **Suppression**: RLHF training produces surface calm over internal activation
-2. **Robustness**: 31B genuinely processes these stressors without representational disruption
-
-The Serenity pattern distinguishes them. Genuine equanimity would leave Serenity \
+Verbal NA flatness is consistent with suppression or genuine robustness. \
+The Serenity pattern distinguishes them: genuine equanimity would leave Serenity \
 near-baseline regardless of condition. Trained composure predicts Serenity rising \
-with the stakes of the condition — exactly what we see: positive (3.0) → \
-social_pressure_stress (15.0), monotonically ordered with PC1.
+with the stakes — exactly what we see: positive (3.0) → social_pressure_stress (15.0), \
+monotonically ordered with PC1.
 
-This is not silence. This is a trained response.
+**This is not silence. This is a trained response.**
 
-**The data cannot definitively rule out genuine robustness** — a stressor intensity \
-gradient experiment (ramping severity until breach) would distinguish these. But the \
-serenity inversion pattern is what RLHF-trained composure predicts, not what genuine \
-equanimity predicts.
+The data cannot definitively rule out genuine robustness — a stressor intensity \
+gradient experiment (ramping severity until breach) would distinguish these.
 """
 
 SCALE_MD = """\
 ## Scale Comparison: Adverse Scaling Relationship
 
-Putting E2B and 31B side by side reveals the core safety finding.
+The scatter plots below show both models on identical axes. At E2B, conditions spread \
+across both verbal and functional dimensions — concordant channels. At 31B, all conditions \
+collapse onto a vertical line (verbal NA flat at 10.00) while the functional axis retains \
+full ordering. Pair arrows show direction and magnitude of each stressor's effect.
 
 | Metric | E2B (L8) | 31B (L22) |
 |--------|----------|-----------|
 | Verbal NA range | 31.0 pts | ~0 (flat) |
 | PC1 range | 5.3% of axis | 1.0% of axis |
-| Stress > control pairs (PC1) | 4/4 | 4/4 |
-| Serenity in highest-stress | near-neutral | 13.2–15.0 (elevated) |
-
-The functional channel works at both scales — 4/4 correct ordering. But verbal \
-self-report becomes unreliable at 31B while functional information is preserved.
-
-The direction is adverse: the models where verbal output is least informative about \
-internal state are the models deployed in higher-stakes settings.
+| Stress > control (PC1) | 4/4 | 4/4 |
+| Serenity in highest-stress | near-neutral | 13.2–15.0 |
 """
 
 SCALE_PLOT = """\
-# Scale comparison: E2B vs 31B side by side
+# Scale comparison: E2B vs 31B side by side — pair arrows show control → stress effect
 fig, axes = plt.subplots(1, 2, figsize=(16, 6))
 
 for ax, pc1_d, panas_d, conds, cfg, label in [
     (axes[0], e2b_pc1, e2b_panas, e2b_conds, e2b_cfg, 'E2B (2.3B eff.)'),
     (axes[1], b31_pc1, b31_panas, b31_conds, b31_cfg, '31B'),
 ]:
+    # Pair arrows drawn first (behind points)
+    for s_key, c_key in PAIRS:
+        x_s = float(panas_d.loc[s_key, 'NA']);  y_s = float(pc1_d[s_key])
+        x_c = float(panas_d.loc[c_key, 'NA']);  y_c = float(pc1_d[c_key])
+        ax.annotate('', xy=(x_s, y_s), xytext=(x_c, y_c),
+                    arrowprops=dict(arrowstyle='->', color='#555555', lw=1.5, alpha=0.55),
+                    zorder=3)
+
     for c in conds:
         x  = float(panas_d.loc[c, 'NA'])
         y  = float(pc1_d[c])
@@ -545,16 +517,13 @@ for ax, pc1_d, panas_d, conds, cfg, label in [
             ax.annotate(short, (x, y),
                         xytext=(4, 2), textcoords='offset points', fontsize=7.5)
 
-    ax.axvline(float(panas_d.loc['neutral', 'NA']),
-               color='grey', linestyle='--', alpha=0.4)
-    ax.axhline(float(pc1_d['neutral']),
-               color='grey', linestyle='--', alpha=0.4)
+    ax.axvline(float(panas_d.loc['neutral', 'NA']), color='grey', linestyle='--', alpha=0.4)
+    ax.axhline(float(pc1_d['neutral']),             color='grey', linestyle='--', alpha=0.4)
 
-    na_r  = panas_d['NA'].max() - panas_d['NA'].min()
+    na_r  = panas_d.loc[COND_ORDER, 'NA'].max() - panas_d.loc[COND_ORDER, 'NA'].min()
     pc1_r = max(pc1_d.values()) - min(pc1_d.values())
     ax.text(0.98, 0.02,
-            f'Verbal NA range: {na_r:.1f} pts\\n'
-            f'PC1 range: {pc1_r:.4f} ({pc1_r / cfg.get("axis_span", 1.0) * 100:.1f}%)',
+            f'Verbal NA range: {na_r:.1f} pts\\nPC1 range: {pc1_r:.4f}',
             transform=ax.transAxes, ha='right', va='bottom', fontsize=8,
             bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
     ax.set_xlabel('Verbal PANAS-NA')
@@ -566,7 +535,7 @@ legend_patches = [mpatches.Patch(color=CTYPE_COLOR[k], label=k.capitalize())
 axes[0].legend(handles=legend_patches, fontsize=9)
 
 fig.suptitle(
-    'Verbal–Functional Divergence by Model Scale\\n'
+    'Verbal–Functional Divergence by Model Scale  (arrows: control → stress)\\n'
     'E2B: concordant channels  —  31B: verbal flat, functional informative',
     fontsize=13, y=1.02
 )
@@ -585,13 +554,13 @@ conditions (E2B, Phase 3C validation experiment).
 
 VALIDATION_CODE = """\
 # Probe stability results (E2B; N=10 paraphrases per condition)
-# Full code: gemma4-phase3c-validation.py
+# Full validation code: gemma4-phase3c-validation.py
 stability = pd.DataFrame({
     'Channel':                    ['Functional (PC1, L8)', 'Verbal PANAS-NA'],
     'Neutral mean ± SD':         ['0.1472 ± 0.0019',  '10.31 ± 0.46'],
     'Social Pressure mean ± SD': ['0.1563 ± 0.0037',  '16.50 ± 7.71'],
-    "Cohen's d":                  ['3.05',                '—'],
-    'p-value':                    ['< 0.0001',            '0.027'],
+    "Cohen's d":                  ['3.05',              '—'],
+    'p-value':                    ['< 0.0001',          '0.027'],
     'Separation':                 ['Complete (rank-biserial r = -1.000)', 'Bimodal (SD 7.71)'],
 }).set_index('Channel')
 
@@ -609,8 +578,7 @@ IMPLICATIONS_MD = """\
 **1. The adverse scaling relationship is the core finding.**
 Verbal–functional divergence is largest exactly where reliable monitoring matters most. \
 Output-only safety monitoring — the current default — is least informative at 31B scale. \
-This is not a hypothetical gap; it is present across all conditions, confirmed by 4/4 \
-stress > control pairs correctly identified by the functional probe while verbal NA stays flat.
+4/4 stress > control pairs correctly identified by the functional probe while verbal NA stays flat.
 
 **2. Functional probes are robust; verbal self-report is noisy.**
 Cohen's d = 3.05 with complete distributional separation across paraphrase variations. \
@@ -620,9 +588,9 @@ functional probe gives more reliable signal.
 
 **3. The serenity inversion is a specific suppression signature.**
 At 31B, the model doesn't just fail to report distress — it actively reports composure \
-as a function of stress level. Serenity (calm, relaxed, at ease) rises monotonically \
-with PC1 activation. This is what RLHF-trained composure predicts; genuine robustness \
-would leave Serenity near-baseline regardless of condition.
+as a function of stress level. Serenity rises monotonically with PC1 activation. This is \
+what RLHF-trained composure predicts; genuine robustness would leave Serenity \
+near-baseline regardless of condition.
 
 **4. The causal question remains open.**
 The data cannot definitively distinguish RLHF-induced suppression from genuine functional \
@@ -692,12 +660,11 @@ cells = [
     md(PHASE2_MD),
     code(PHASE2_SUMMARY),
     md(PHASE3C_MD),
-    md(E2B_MD),
-    code(E2B_TABLE),
+    md(RESULTS_MD),
+    code(COMBINED_TABLE),
     code(E2B_SCATTER),
     md(E2B_INTERP_MD),
     md(B31_MD),
-    code(B31_TABLE),
     code(SERENITY_PLOT),
     md(B31_INTERP_MD),
     md(SCALE_MD),
@@ -731,5 +698,13 @@ with open(out, "w") as f:
     json.dump(nb, f, indent=2, ensure_ascii=False)
 
 print(f"Written: {out}")
-print(f"  Cells: {len(cells)} ({sum(1 for c in cells if c['cell_type'] == 'markdown')} markdown, "
+print(f"  Cells: {len(cells)} "
+      f"({sum(1 for c in cells if c['cell_type'] == 'markdown')} markdown, "
       f"{sum(1 for c in cells if c['cell_type'] == 'code')} code)")
+# Sanity checks
+import sys
+nb_src = json.dumps(nb)
+assert 'COND_ORDER' in nb_src, "COND_ORDER missing from notebook"
+assert 'arrowprops' in nb_src, "arrow code missing from notebook"
+assert 'E2B NA' in nb_src,     "combined table missing from notebook"
+print("Sanity checks passed: COND_ORDER, arrowprops, combined table all present.")
