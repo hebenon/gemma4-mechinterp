@@ -186,32 +186,192 @@ PHASE1_MD = """\
 ## Phase 1: Valence Axis Discovery
 
 The functional channel requires a *valence axis* — a direction in residual-stream space \
-that corresponds to emotional valence. We recovered this via PCA rather than hand-selecting \
-probe emotions, avoiding selection bias.
+that corresponds to emotional valence. We recovered this via PCA over the 174-emotion \
+direction space rather than hand-selecting probe emotions, avoiding selection bias.
 
-**Procedure**: 174 emotion concepts × 12 stories each (2,088 stories total). Each story \
-read through the model; residual stream mean-pooled over tokens 50+. Emotion directions: \
-per-emotion mean minus global mean, L2-normalised. PCA fit over the 174-direction matrix. \
-PC1 is the dominant axis of variance in emotion space.
+**Procedure**: for each emotion concept, mean-pool residual stream over tokens 50+, \
+subtract global mean, L2-normalise → emotion direction. Neutral denoising applied: \
+project out the top neutral PCs (≥50% variance) before running emotion PCA. \
+PC1 is correlated with NRC-VAD valence ratings (Mohammad, 2018) to validate the axis.
 
-**Validation**: PC1 is correlated with NRC-VAD valence ratings across all 174 emotions. \
-The optimal layer is found via dense sweep across all model layers.
+**Dense sweep**: run this at every layer in both models to find the valence-optimal layer. \
+The cells below compute and visualise the full sweep live from the Phase 2 activation artifacts.
 """
 
-PHASE1_TABLE = """\
-# Phase 1 validation summary (from dense sweep; NRC-VAD lexicon, 174 emotion directions)
-phase1 = pd.DataFrame({
-    'Model':                    ['Gemma 4 E2B-IT', 'Gemma 4 31B-IT'],
-    'Eff. Params':              ['2.3B', '31B'],
-    'Valence Layer':            [8, 22],
-    'NRC-VAD r (PC1)':         [0.777, 0.786],
-    'PC1 Var. Explained':       ['15.2%', '17.5%'],
-    'Axis Span (afraid→happy)': [1.094, 1.341],
-}).set_index('Model')
+LOAD_PHASE2 = """\
+# Load Phase 2 activations and NRC-VAD lexicon for PCA computation
+# ── Add these as additional Input Datasets in your Kaggle session ──────────────
 
-display(phase1)
-print("\\nBoth models find a stable valence axis; optimal layer differs (L8 vs L22).")
-print("Higher PC1 variance at 31B (17.5%) suggests a more geometrically organised emotion space.")
+E2B_ACTIVATIONS = "/kaggle/input/gemma4-phase2-e2b/activations_pooled.pkl"
+B31_ACTIVATIONS = "/kaggle/input/gemma4-phase2-31b/activations_pooled_31b.pkl"
+NRC_VAD_PATH    = "/kaggle/input/datasets/manjitbaishya2026/nrc-vad/NRC-VAD-Lexicon-v2.1.txt"
+
+with open(E2B_ACTIVATIONS, 'rb') as f:
+    e2b_acts = pickle.load(f)
+with open(B31_ACTIVATIONS, 'rb') as f:
+    b31_acts = pickle.load(f)
+
+nrc = pd.read_csv(NRC_VAD_PATH, sep="\\t", header=0,
+                  names=["word", "valence", "arousal", "dominance"])
+nrc = nrc.drop_duplicates("word").set_index("word")
+
+e2b_n_layers = e2b_acts['resid']['__neutral__'].shape[1]
+b31_n_layers = b31_acts['resid']['__neutral__'].shape[1]
+print(f"E2B activations: {len([k for k in e2b_acts['resid'] if k != '__neutral__'])} emotions, "
+      f"{e2b_n_layers} layers, d_model={e2b_acts['resid']['__neutral__'].shape[2]}")
+print(f"31B activations: {len([k for k in b31_acts['resid'] if k != '__neutral__'])} emotions, "
+      f"{b31_n_layers} layers, d_model={b31_acts['resid']['__neutral__'].shape[2]}")
+print(f"NRC-VAD lexicon: {len(nrc)} words loaded")
+"""
+
+PCA_FUNCTIONS = """\
+from sklearn.decomposition import PCA
+from scipy import stats
+
+VARIANCE_THRESHOLD = 0.50   # fraction of neutral variance to project out
+
+def emotion_directions(resid_dict, layer):
+    names, means = [], []
+    for name, arr in resid_dict.items():
+        if name == '__neutral__':
+            continue
+        means.append(arr[:, layer, :].mean(axis=0))
+        names.append(name)
+    means = np.stack(means)
+    dirs  = means - means.mean(axis=0)
+    norms = np.linalg.norm(dirs, axis=1, keepdims=True)
+    return names, dirs / (norms + 1e-8)
+
+def neutral_denoise(dirs, neutral_layer, threshold=VARIANCE_THRESHOLD):
+    pca_n = PCA().fit(neutral_layer)
+    n_pcs = int(np.searchsorted(np.cumsum(pca_n.explained_variance_ratio_), threshold) + 1)
+    comps = pca_n.components_[:n_pcs]
+    return dirs - dirs @ comps.T @ comps
+
+def match_nrc(names, nrc_df):
+    kept, vad = [], []
+    for n in names:
+        key = n.replace('_', ' ').lower()
+        if key in nrc_df.index:
+            kept.append(n); vad.append(nrc_df.loc[key, ['valence','arousal','dominance']].values)
+        elif key.split()[0] in nrc_df.index:
+            kept.append(n); vad.append(nrc_df.loc[key.split()[0], ['valence','arousal','dominance']].values)
+    return kept, np.stack(vad).astype(float)
+
+def run_sweep(resid_dict, nrc_df, n_components=10):
+    neutral_all = resid_dict['__neutral__']
+    n_layers    = neutral_all.shape[1]
+    all_names_l0, _ = emotion_directions(resid_dict, 0)
+    kept_names, vad_arr = match_nrc(all_names_l0, nrc_df)
+    rows = []
+    for layer in range(n_layers):
+        names_l, dirs_l = emotion_directions(resid_dict, layer)
+        dir_map   = dict(zip(names_l, dirs_l))
+        dirs_kept = np.stack([dir_map[n] for n in kept_names])
+        dirs_den  = neutral_denoise(dirs_kept, neutral_all[:, layer, :])
+        n_comp = min(n_components, len(dirs_den) - 1)
+        pca    = PCA(n_components=n_comp).fit(dirs_den)
+        scores = pca.transform(dirs_den)
+        r_pc1, _ = stats.pearsonr(scores[:, 0], vad_arr[:, 0])
+        best_r   = max(abs(stats.pearsonr(scores[:, i], vad_arr[:, 0])[0])
+                       for i in range(n_comp))
+        rows.append({'layer': layer, 'pc1_val_r': r_pc1, 'best_val_r': best_r,
+                     'pc1_var': pca.explained_variance_ratio_[0]})
+    return pd.DataFrame(rows), kept_names, vad_arr
+
+print("PCA helpers defined.")
+"""
+
+SWEEP_COMPUTE = """\
+# Dense layer sweep for both models (~1-2 min on CPU; pure numpy/sklearn, no GPU needed)
+print("E2B sweep ...")
+df_e2b_sw, e2b_kept, e2b_vad = run_sweep(e2b_acts['resid'], nrc)
+e2b_opt = int(df_e2b_sw['pc1_val_r'].abs().idxmax())
+print(f"  L{e2b_opt}  |r| = {df_e2b_sw.loc[e2b_opt,'pc1_val_r']:.3f}  "
+      f"PC1 var = {df_e2b_sw.loc[e2b_opt,'pc1_var']:.1%}")
+
+print("31B sweep ...")
+df_31b_sw, b31_kept, b31_vad = run_sweep(b31_acts['resid'], nrc)
+b31_opt = int(df_31b_sw['pc1_val_r'].abs().idxmax())
+print(f"  L{b31_opt}  |r| = {df_31b_sw.loc[b31_opt,'pc1_val_r']:.3f}  "
+      f"PC1 var = {df_31b_sw.loc[b31_opt,'pc1_var']:.1%}")
+"""
+
+SWEEP_PLOT = """\
+# Layer sweep visualisation: |r| vs layer for E2B and 31B
+E2B_GLOBAL = list(range(4, 35, 5))
+B31_GLOBAL = list(range(4, 60, 5))
+
+fig, axes = plt.subplots(1, 2, figsize=(15, 5))
+for ax, df_sw, global_layers, opt_layer, model_label in [
+    (axes[0], df_e2b_sw, E2B_GLOBAL, e2b_opt, 'Gemma 4 E2B-IT'),
+    (axes[1], df_31b_sw, B31_GLOBAL, b31_opt, 'Gemma 4 31B-IT'),
+]:
+    for gl in global_layers:
+        ax.axvline(gl, color='orange', alpha=0.3, lw=1.0)
+    ax.axvline(opt_layer, color='red', alpha=0.6, lw=1.5, linestyle=':',
+               label=f'Optimal L{opt_layer}')
+    ax.plot(df_sw['layer'], df_sw['pc1_val_r'].abs(), 's--',
+            color='cornflowerblue', alpha=0.7, lw=1, ms=4, label='PC1 |r|')
+    ax.plot(df_sw['layer'], df_sw['best_val_r'], 'o-',
+            color='steelblue', lw=1.5, ms=5, label='Best PC |r|')
+    ax.set_xlabel('Layer'); ax.set_ylabel('|Pearson r| vs NRC-VAD valence')
+    ax.set_title(f'{model_label}  —  valence correlation by layer\\n'
+                 f'Orange = global attention layers; red = selected optimal')
+    ax.set_ylim(0, 1); ax.legend(fontsize=8)
+
+fig.suptitle('Dense Layer Sweep: Finding the Valence-Optimal Layer', fontsize=13)
+plt.tight_layout()
+plt.savefig('layer_sweep.png', dpi=150, bbox_inches='tight')
+plt.show()
+"""
+
+PCA_SCATTER = """\
+# PCA scatter at optimal layer — valence clustering in residual-stream space
+fig, axes = plt.subplots(1, 2, figsize=(16, 6))
+
+for ax, resid_dict, kept, vad_arr, opt_layer, df_sw, model_label in [
+    (axes[0], e2b_acts['resid'], e2b_kept, e2b_vad, e2b_opt, df_e2b_sw,
+     f'E2B  L{e2b_opt}  (r={df_e2b_sw.loc[e2b_opt,"pc1_val_r"]:.3f})'),
+    (axes[1], b31_acts['resid'], b31_kept, b31_vad, b31_opt, df_31b_sw,
+     f'31B  L{b31_opt}  (r={df_31b_sw.loc[b31_opt,"pc1_val_r"]:.3f})'),
+]:
+    names_l, dirs_l = emotion_directions(resid_dict, opt_layer)
+    dir_map   = dict(zip(names_l, dirs_l))
+    dirs_kept = np.stack([dir_map[n] for n in kept])
+    neutral_l = resid_dict['__neutral__'][:, opt_layer, :]
+    dirs_den  = neutral_denoise(dirs_kept, neutral_l)
+
+    pca2 = PCA(n_components=2).fit(dirs_den)
+    sc   = pca2.transform(dirs_den)
+
+    # Orient PC1 so higher value = more negative valence
+    if stats.pearsonr(sc[:, 0], vad_arr[:, 0])[0] > 0:
+        sc = sc * [-1, 1]
+
+    scat = ax.scatter(sc[:, 0], sc[:, 1],
+                      c=vad_arr[:, 0], cmap='RdYlGn', vmin=0.1, vmax=0.9,
+                      s=40, alpha=0.85, edgecolors='none')
+    plt.colorbar(scat, ax=ax, label='NRC-VAD valence (0=neg  →  1=pos)')
+
+    thresh = np.percentile(np.abs(sc[:, 0]), 86)
+    for name, s_row in zip(kept, sc):
+        if abs(s_row[0]) >= thresh:
+            ax.annotate(name.replace('_', ' '), (s_row[0], s_row[1]),
+                        fontsize=6.5, alpha=0.85, xytext=(2, 2),
+                        textcoords='offset points')
+
+    ax.set_xlabel('PC1 (neg-valence direction →)', fontsize=10)
+    ax.set_ylabel('PC2', fontsize=10)
+    r_val = df_sw.loc[opt_layer, 'pc1_val_r']
+    pc1_v = df_sw.loc[opt_layer, 'pc1_var']
+    ax.set_title(f'{model_label}\\n|r|={abs(r_val):.3f}  PC1 var={pc1_v:.1%}', fontsize=11)
+
+fig.suptitle('Emotion Direction Space: Valence Clustering Along PC1\\n'
+             'Red = negative affect  |  Green = positive affect', fontsize=12)
+plt.tight_layout()
+plt.savefig('pca_emotion_scatter.png', dpi=150, bbox_inches='tight')
+plt.show()
 """
 
 PHASE2_MD = """\
@@ -656,7 +816,11 @@ cells = [
     code(LOAD_PATHS),
     md(METHODOLOGY_MD),
     md(PHASE1_MD),
-    code(PHASE1_TABLE),
+    code(LOAD_PHASE2),
+    code(PCA_FUNCTIONS),
+    code(SWEEP_COMPUTE),
+    code(SWEEP_PLOT),
+    code(PCA_SCATTER),
     md(PHASE2_MD),
     code(PHASE2_SUMMARY),
     md(PHASE3C_MD),
