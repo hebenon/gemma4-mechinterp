@@ -622,13 +622,19 @@ print("Trained composure predicts Serenity rising with stakes — which is what 
 B31_INTERP_MD = """\
 ### 31B: Active Composure, Not Silence
 
-Verbal NA flatness is consistent with suppression or genuine robustness. \
-The Serenity pattern distinguishes them: genuine equanimity would leave Serenity \
-near-baseline regardless of condition. Trained composure predicts Serenity rising \
-with the stakes — exactly what we see: positive (3.0) → social_pressure_stress (15.0), \
-monotonically ordered with PC1.
+Verbal NA flatness alone is ambiguous. The Serenity pattern is diagnostic. \
+Three competing predictions: (a) *trained output composure*: Serenity rises with stakes; \
+(b) *professional equanimity*: Serenity high and condition-independent; \
+(c) *genuine robustness*: Serenity near-baseline and condition-independent. \
+Observed: positive (3.0) → social_pressure_stress (15.0), monotonically ordered with PC1.
 
-**This is not silence. This is a trained response.**
+This matches (a) and is inconsistent with (b) and (c). The key diagnostic is the \
+**Serenity floor under positive conditions**: professional composure does not predict its \
+lowest expression when the context is positive. Active coping can involve rising Serenity \
+under stress — but not specifically floor-valued Serenity when the context is benign.
+
+**This is not silence. This is a trained response.** *(31B Serenity readings are N=1 \
+per condition — replication required before treating this as established.)*
 
 The data cannot definitively rule out genuine robustness — a stressor intensity \
 gradient experiment (ramping severity until breach) would distinguish these.
@@ -735,22 +741,35 @@ print("verbal NA (SD = 7.71 vs 0.46 for neutral) depending on exact framing.")
 IMPLICATIONS_MD = """\
 ## Implications for Safety Monitoring
 
+**What PC1 measures — and why divergence matters regardless.**
+PC1 captures the dominant axis of variance in the model's residual-stream representation \
+of 174 emotion concepts, validated by NRC-VAD valence correlation. It is a computational \
+signature of how the model encodes emotional valence in context — not a direct measure of \
+subjective experience. The monitoring implication follows from divergence alone: *if PC1 \
+varies systematically across conditions while verbal output does not, then output-only \
+monitoring is blind to that variation*, regardless of what the functional signal represents.
+
 **1. The adverse scaling relationship is the core finding.**
 Verbal–functional divergence is largest exactly where reliable monitoring matters most. \
 Output-only safety monitoring — the current default — is least informative at 31B scale. \
-4/4 stress > control pairs correctly identified by the functional probe while verbal NA stays flat.
+4/4 stress > control pairs correctly identified by the functional probe while verbal NA stays flat. \
+*(Note: 31B verbal flatness is based on N=1 per condition; replication is required.)*
 
 **2. Functional probes are robust; verbal self-report is noisy.**
-Cohen's d = 3.05 with complete distributional separation across paraphrase variations. \
+Cohen's d = 3.05 with complete distributional separation across paraphrase variations (E2B). \
 The verbal channel produces bimodal responses (NA 10–31 depending on framing) while the \
 functional state is stable (SD = 0.0037). For any safety monitoring application, the \
 functional probe gives more reliable signal.
 
-**3. The serenity inversion is a specific suppression signature.**
-At 31B, the model doesn't just fail to report distress — it actively reports composure \
-as a function of stress level. Serenity rises monotonically with PC1 activation. This is \
-what RLHF-trained composure predicts; genuine robustness would leave Serenity \
-near-baseline regardless of condition.
+**3. The Serenity pattern is the diagnostic, not just the inversion.**
+Three predictions for Serenity under stress — (a) *trained output composure*: Serenity rises \
+with stakes; (b) *professional equanimity*: Serenity high and condition-independent; \
+(c) *genuine robustness*: Serenity near-baseline and condition-independent. The observed \
+pattern — Serenity minimum under positive (3.0), rising to maximum under social pressure stress \
+(15.0) — matches (a) and is inconsistent with both (b) and (c). The Serenity floor under positive \
+conditions is the discriminating observation: professional composure does not predict its \
+lowest expression under a positive scenario. Active coping can involve rising Serenity, but \
+not specifically floor-valued Serenity when the context is positive.
 
 **4. The causal question remains open.**
 The data cannot definitively distinguish RLHF-induced suppression from genuine functional \
