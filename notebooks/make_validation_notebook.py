@@ -80,7 +80,9 @@ model     = AutoModelForCausalLM.from_pretrained(
     device_map="auto",
 )
 model.eval()
-n_layers = model.config.num_hidden_layers
+# Gemma 4 is multimodal — text config is nested under text_config
+cfg      = getattr(model.config, 'text_config', model.config)
+n_layers = cfg.num_hidden_layers
 print(f"Model loaded. Layers: {n_layers}")
 
 # ── Compute valence axis from Phase 2 activations (matches Phase 3C exactly) ──
