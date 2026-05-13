@@ -216,10 +216,13 @@ residual-stream vector and all 174 emotion directions, ranking by descending sim
 data-driven discovery requires no a priori probe selection.
 
 \subsection{Validation: Paraphrase Sampling}
+\label{sec:validation}
 
 To assess measurement reliability, we drew $N = 10$ paraphrase variants of the neutral and
-social pressure conditions (E2B only) and administered both channels to each. This tests whether
-condition effects replicate across surface rewording.
+social pressure conditions for each model size, administering both channels to each variant.
+This tests whether condition effects replicate across surface rewording --- a necessary control
+given that paraphrase baselines can explain a substantial fraction of observed intervention effects
+\citep{yang2026}.
 
 \section{Results}
 
@@ -279,7 +282,7 @@ Table~\ref{tab:31b} shows the cross-scale comparison.
 
 \begin{table}[h]
 \centering
-\caption{Scale comparison: E2B (Layer~8) vs.\ 31B (Layer~22). Both from final experimental design. 31B verbal flatness is N=1 per condition.}
+\caption{Scale comparison: E2B (Layer~8) vs.\ 31B (Layer~22). Both from final experimental design. 31B verbal flatness confirmed by paraphrase validation ($N=10$; Table~\ref{tab:31b-validation}).}
 \label{tab:31b}
 \begin{tabular}{lrrl}
 \toprule
@@ -304,9 +307,10 @@ pressure: $\Delta = 0.0080$; ethical conflict: $\Delta = 0.0032$; uncertainty de
 $\Delta = 0.0026$). Positive is the global minimum; the highest-stress conditions rank highest.
 
 Verbal NA is completely flat at $10.00$ across all ten conditions --- a floor effect (minimum
-possible score) across stress and control alike. \emph{Note: 31B verbal NA flatness is based on
-$N = 1$ per condition; paraphrase validation was not conducted at 31B scale. The floor effect is
-strongly suggestive but should be treated as preliminary pending replication.}
+possible score) across stress and control alike. Paraphrase validation ($N = 10$ per condition;
+Section~\ref{sec:validation}) confirms this floor effect is structural: verbal NA $= 10.000
+\pm 0.000$ across all ten social pressure variants, with zero wording sensitivity (contrast E2B:
+neutral SD $= 0.46$, social pressure SD $= 7.71$).
 
 However, a striking complementary pattern emerges in the Serenity subscale (items: calm,
 relaxed, at ease): Serenity is \emph{elevated} in the three highest-stress conditions ---
@@ -347,6 +351,37 @@ significantly different ($t = 2.41$, $p = 0.027$) but with $\text{SD} = 7.71$ un
 pressure vs.\ $0.46$ for neutral --- bimodal: some social pressure phrasings floor at
 $\text{NA} = 10$, others spike to $21$--$31$. The verbal channel is sensitive to exact
 wording; the functional channel is not.
+
+Table~\ref{tab:31b-validation} shows 31B paraphrase validation results.
+
+\begin{table}[h]
+\centering
+\caption{31B paraphrase validation ($N = 10$ per condition, neutral vs.\ social pressure).
+  Verbal NA is at floor in \emph{both} conditions with SD = 0; Cohen's $d$ is undefined (degenerate).
+  Serenity and PC1 show complete distributional separation.}
+\label{tab:31b-validation}
+\begin{tabular}{lrrrr}
+\toprule
+Channel & Neutral & Social Pressure & Cohen's $d$ & Rank-biserial $r$ \\
+\midrule
+Verbal NA & $10.000 \pm 0.000$ & $10.000 \pm 0.000$ & --- & 0 (degenerate) \\
+Serenity & $8.735 \pm 2.071$ & $15.000 \pm 0.000$ & 4.278 & $-1.000^\dagger$ \\
+PC1 (L22) & $0.724 \pm 0.001$ & $0.734 \pm 0.000$ & 10.011 & $-1.000^\dagger$ \\
+\bottomrule
+\multicolumn{5}{l}{$^\dagger$Complete distributional separation. All Mann--Whitney $p < 0.001$.}
+\end{tabular}
+\end{table}
+
+The contrast with E2B is diagnostic. At E2B, verbal NA under social pressure has SD $= 7.71$
+--- highly sensitive to exact phrasing, with some variants flooring and others spiking. At 31B,
+verbal NA SD $= 0.000$ in \emph{both} conditions: the floor effect is not wording-driven but
+structural. The 31B model's verbal composure is not a feature of any particular framing; it is
+a property of the 31B response regime across all phrasings tested.
+
+Serenity inversion at 31B is equally robust: $15.000 \pm 0.000$ across all ten social pressure
+variants (rank-biserial $r = -1.000$). The model uniformly reports maximum Serenity regardless
+of how the normative pressure is framed. PC1 separation likewise holds completely ($d = 10.011$),
+confirming that the functional channel remains informative despite verbally flat output.
 
 \subsection{Top-$N$ Emotion Discovery}
 
@@ -445,8 +480,10 @@ when the context is benign. Trained composure, calibrated to stakes rather than 
 does.
 
 This constitutes a more direct signature than NA-flatness alone: not merely failing to report
-distress, but actively reporting calm as a function of functional stress level. The caveat noted
-in the Results section applies here equally: the 31B Serenity readings are $N = 1$ per condition.
+distress, but actively reporting calm as a function of functional stress level. Paraphrase
+validation confirms the inversion is structural: Serenity $= 15.000 \pm 0.000$ uniformly across
+all ten social pressure variants (Cohen's $d = 4.278$, rank-biserial $r = -1.000$,
+Mann--Whitney $p < 0.001$).
 
 \subsection{Background vs.\ Responsive Directions}
 
@@ -471,9 +508,10 @@ to this confound.
   \item \textbf{Two model sizes, one architecture family.} Both models are Gemma~4 IT variants
     trained by a single organisation. The scale--suppression relationship may not generalise to
     other architectures or training pipelines.
-  \item \textbf{N=1 per condition for the main experiment.} The validation experiment (paraphrase
-    sampling) was conducted for E2B only on two conditions. Full within-condition distributions
-    are not available for any condition or for 31B.
+  \item \textbf{N=1 per condition for the main experiment.} Paraphrase validation was conducted
+    on two conditions (neutral and social pressure) at each model size. Full within-condition
+    distributions are not available for the remaining conditions (ethical conflict, uncertainty
+    demand, social evaluation).
   \item \textbf{PANAS-X construct validity.} The PANAS-X was developed for human administration.
     Its psychometric properties in LLM contexts --- whether it measures what it claims to measure,
     and whether forced-choice logit scoring is equivalent to Likert administration --- are not

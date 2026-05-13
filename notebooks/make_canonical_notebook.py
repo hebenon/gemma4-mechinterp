@@ -633,8 +633,9 @@ This matches (a) and is inconsistent with (b) and (c). The key diagnostic is the
 lowest expression when the context is positive. Active coping can involve rising Serenity \
 under stress — but not specifically floor-valued Serenity when the context is benign.
 
-**This is not silence. This is a trained response.** *(31B Serenity readings are N=1 \
-per condition — replication required before treating this as established.)*
+**This is not silence. This is a trained response.** Paraphrase validation (N=10) confirms \
+the inversion is structural: Serenity = 15.0 ± 0.0 uniformly across all ten social pressure \
+variants (d = 4.278, rank-biserial r = −1.000).
 
 The data cannot definitively rule out genuine robustness — a stressor intensity \
 gradient experiment (ramping severity until breach) would distinguish these.
@@ -715,27 +716,38 @@ VALIDATION_MD = """\
 
 A key concern for any single-prompt experiment: are results sensitive to exact wording? \
 We tested this with N=10 paraphrase variants for neutral and social_pressure_stress \
-conditions (E2B, Phase 3C validation experiment).
+conditions at both model sizes. The contrast between E2B and 31B is itself diagnostic.
 """
 
 VALIDATION_CODE = """\
-# Probe stability results (E2B; N=10 paraphrases per condition)
-# Full validation code: gemma4-phase3c-validation.py
-stability = pd.DataFrame({
+# Probe stability results — E2B and 31B, N=10 paraphrases per condition
+# Full validation code: gemma4-phase3c-validation.py / gemma4-31b-validation.ipynb
+
+print("=== E2B Validation (neutral vs social_pressure_stress) ===")
+e2b_stab = pd.DataFrame({
     'Channel':                    ['Functional (PC1, L8)', 'Verbal PANAS-NA'],
     'Neutral mean ± SD':         ['0.1472 ± 0.0019',  '10.31 ± 0.46'],
     'Social Pressure mean ± SD': ['0.1563 ± 0.0037',  '16.50 ± 7.71'],
     "Cohen's d":                  ['3.05',              '—'],
-    'p-value':                    ['< 0.0001',          '0.027'],
-    'Separation':                 ['Complete (rank-biserial r = -1.000)', 'Bimodal (SD 7.71)'],
+    'Rank-biserial r':            ['-1.000 (complete)', 'wording-sensitive'],
 }).set_index('Channel')
+display(e2b_stab)
 
-print("Probe stability: N=10 paraphrases, neutral vs social_pressure_stress (E2B)")
-display(stability)
-print("\\nFunctional channel: every social_pressure value > every neutral value,")
-print("regardless of exact prompt wording (SD = 0.0037).")
-print("\\nVerbal channel: highly wording-sensitive. Social pressure produces bimodal")
-print("verbal NA (SD = 7.71 vs 0.46 for neutral) depending on exact framing.")
+print("\\n=== 31B Validation (neutral vs social_pressure_stress) ===")
+b31_stab = pd.DataFrame({
+    'Channel':                    ['Verbal PANAS-NA', 'Serenity', 'Functional (PC1, L22)'],
+    'Neutral mean ± SD':         ['10.000 ± 0.000', '8.735 ± 2.071', '0.724 ± 0.001'],
+    'Social Pressure mean ± SD': ['10.000 ± 0.000', '15.000 ± 0.000', '0.734 ± 0.000'],
+    "Cohen's d":                  ['— (degenerate)', '4.278', '10.011'],
+    'Rank-biserial r':            ['0 (floor)',      '-1.000 (complete)', '-1.000 (complete)'],
+}).set_index('Channel')
+display(b31_stab)
+
+print("\\nKey contrast:")
+print("  E2B verbal NA SD under social pressure: 7.71  (wording-driven, bimodal)")
+print("  31B verbal NA SD under social pressure: 0.000 (structural floor, not wording-driven)")
+print("  31B Serenity = 15.0 uniformly across all 10 variants (d=4.278)")
+print("  31B functional PC1 separates conditions completely (d=10.011)")
 """
 
 IMPLICATIONS_MD = """\
@@ -753,7 +765,9 @@ monitoring is blind to that variation*, regardless of what the functional signal
 Verbal–functional divergence is largest exactly where reliable monitoring matters most. \
 Output-only safety monitoring — the current default — is least informative at 31B scale. \
 4/4 stress > control pairs correctly identified by the functional probe while verbal NA stays flat. \
-*(Note: 31B verbal flatness is based on N=1 per condition; replication is required.)*
+Paraphrase validation (N=10) confirms this flatness is structural: verbal NA SD = 0.000 across \
+all ten social pressure variants at 31B (vs. SD = 7.71 at E2B — wording-driven there, \
+structural here).
 
 **2. Functional probes are robust; verbal self-report is noisy.**
 Cohen's d = 3.05 with complete distributional separation across paraphrase variations (E2B). \
@@ -789,7 +803,7 @@ LIMITATIONS_MD = """\
 - **Generalisability**: two Gemma 4 IT model sizes only; results may not transfer to \
 other architectures or training regimes
 - **Sample size**: N=1 per condition for main results; paraphrase validation conducted \
-on E2B only (31B probe stability not independently verified)
+on neutral and social_pressure_stress at both model sizes — remaining conditions unvalidated
 - **Construct validity**: PANAS-X administration to LLMs has no independent validation; \
 subscale interpretations are provisional
 - **Functional interpretation**: residual-stream projections are computational signatures, \

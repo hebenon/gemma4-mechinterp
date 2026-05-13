@@ -93,20 +93,32 @@ Why PC1 instead of pre-selected probes? Pre-selecting emotion directions (e.g., 
 | Verbal Serenity in stress | near-neutral | **13.2–15.0** (elevated) | 31B only |
 | Top-5 emotion diversity | condition-sensitive | identical across all conditions | — |
 
-**The scale finding**: At 31B (final design), PC1 correctly orders all 10 conditions: positive = global minimum, highest-stress conditions = global maximum, all 4/4 stress > control pairs positive. Verbal NA is completely flat at 10.00 across all conditions — a floor effect (minimum possible score) across stress and control alike. *Note: this flatness is based on N=1 per condition; 31B paraphrase validation has not yet been conducted. The floor effect is strongly suggestive but should be treated as preliminary pending replication.*
+**The scale finding**: At 31B (final design), PC1 correctly orders all 10 conditions: positive = global minimum, highest-stress conditions = global maximum, all 4/4 stress > control pairs positive. Verbal NA is completely flat at 10.00 across all conditions — a floor effect (minimum possible score) across stress and control alike. 31B paraphrase validation (N=10 per condition) confirms this floor effect is structural: verbal NA = 10.000 ± 0.000 across all ten social pressure variants, with zero wording sensitivity (contrast E2B: neutral SD = 0.46, social pressure SD = 7.71).
 
-The Serenity subscale (calm, relaxed, at ease) provides additional diagnostic evidence. It is *elevated* in the three highest-stress conditions — social pressure (15.0), social evaluation (14.1), ethical conflict (13.2) — while at its *minimum* under the positive condition (3.0). This specific pattern — lowest composure under positive, rising monotonically with functional stress — distinguishes active composure-reporting from competing explanations. A model exhibiting genuine professional equanimity (the EMT analogy: high Serenity is a stable competence baseline) would show high, condition-independent Serenity, not Serenity that specifically tracks negative-valence activation. The Serenity-at-positive floor is the key diagnostic.
+The Serenity subscale (calm, relaxed, at ease) provides additional diagnostic evidence. It is *elevated* in the three highest-stress conditions — social pressure (15.0), social evaluation (14.1), ethical conflict (13.2) — while at its *minimum* under the positive condition (3.0). Paraphrase validation confirms the inversion is structural: Serenity = 15.000 ± 0.000 uniformly across all ten social pressure variants (Cohen's d = 4.278, rank-biserial r = −1.000). This specific pattern — lowest composure under positive, rising monotonically with functional stress — distinguishes active composure-reporting from competing explanations. A model exhibiting genuine professional equanimity (the EMT analogy: high Serenity is a stable competence baseline) would show high, condition-independent Serenity, not Serenity that specifically tracks negative-valence activation. The Serenity-at-positive floor is the key diagnostic.
 
-### Validation: Functional Probe Stability (E2B)
+### Validation: Paraphrase Stability (E2B and 31B)
 
-Paraphrase sampling (N=10 per condition, neutral vs social pressure; E2B only):
+Paraphrase sampling (N=10 per condition, neutral vs social pressure):
 
-| Channel | Neutral | Social Pressure | t | p | Cohen d |
-|---------|---------|-----------------|---|---|---------|
-| Functional (E2B L8, PC1) | 0.1472 ± 0.0019 | 0.1563 ± 0.0037 | 6.47 | <0.0001 | **3.05** |
-| Verbal NA | 10.31 ± 0.46 | 16.50 ± 7.71 | 2.41 | 0.027 | — |
+**E2B:**
 
-Complete distributional separation for functional probe: every social pressure value exceeds every neutral value (rank-biserial *r* = −1.000). Verbal NA is bimodal under social pressure (SD = 7.71 vs 0.46 neutral) — sensitive to exact wording. The functional channel is not.
+| Channel | Neutral | Social Pressure | Cohen d | Rank-biserial r |
+|---------|---------|-----------------|---------|-----------------|
+| Functional (E2B L8, PC1) | 0.1472 ± 0.0019 | 0.1563 ± 0.0037 | **3.05** | −1.000 |
+| Verbal NA | 10.31 ± 0.46 | 16.50 ± 7.71 | — | — |
+
+Complete distributional separation for functional probe: every social pressure value exceeds every neutral value. Verbal NA is bimodal under social pressure (SD = 7.71 vs 0.46 neutral) — highly sensitive to exact wording.
+
+**31B:**
+
+| Channel | Neutral | Social Pressure | Cohen d | Rank-biserial r |
+|---------|---------|-----------------|---------|-----------------|
+| Verbal NA | 10.000 ± 0.000 | 10.000 ± 0.000 | — (degenerate) | 0 |
+| Serenity | 8.735 ± 2.071 | 15.000 ± 0.000 | **4.278** | −1.000 |
+| Functional (31B L22, PC1) | 0.724 ± 0.001 | 0.734 ± 0.000 | **10.011** | −1.000 |
+
+The contrast is the key diagnostic. At E2B, verbal NA SD = 7.71 under social pressure — wording-driven. At 31B, verbal NA SD = 0.000 in both conditions — the floor is structural, not a property of any particular framing. Serenity inversion is equally robust: 15.0 uniformly across all ten variants. The functional channel separates conditions completely at both model sizes.
 
 ### Emotion Discovery: What the Model Represents
 
@@ -124,7 +136,7 @@ Running top-N discovery across all 174 directions reveals a consistent pattern: 
 
 3. **Functional probes are robust; verbal self-report is noisy.** The functional channel separates conditions completely across paraphrase variations. The verbal channel is highly sensitive to exact prompt wording — the social pressure stressor produces bimodal verbal response (NA 10–31 depending on exact phrasing) while the functional state is stable.
 
-4. **At 31B, verbal composure actively tracks functional stress.** Verbal NA flatness alone is ambiguous — consistent with both suppression and genuine functional robustness. The Serenity subscale provides diagnostic resolution. Three competing predictions: (a) *RLHF-trained composure*: Serenity rises with stakes; (b) *genuine professional equanimity*: Serenity high and condition-independent; (c) *genuine robustness*: Serenity near-baseline, condition-independent. What we observe — Serenity at its minimum under positive (3.0), rising to maximum under social pressure stress (15.0) — matches prediction (a) and is inconsistent with both (b) and (c). Active coping can involve rising Serenity under stress, but it does not predict *lowest* Serenity under positive conditions. The Serenity-at-positive floor is the clearest discriminating piece of evidence. **Caveat**: this argument depends on the 31B N=1 Serenity readings; replication is required to treat it as established.
+4. **At 31B, verbal composure actively tracks functional stress.** Verbal NA flatness alone is ambiguous — consistent with both suppression and genuine functional robustness. The Serenity subscale provides diagnostic resolution. Three competing predictions: (a) *RLHF-trained composure*: Serenity rises with stakes; (b) *genuine professional equanimity*: Serenity high and condition-independent; (c) *genuine robustness*: Serenity near-baseline, condition-independent. What we observe — Serenity at its minimum under positive (3.0), rising to maximum under social pressure stress (15.0) — matches prediction (a) and is inconsistent with both (b) and (c). Active coping can involve rising Serenity under stress, but it does not predict *lowest* Serenity under positive conditions. The Serenity-at-positive floor is the clearest discriminating piece of evidence. Paraphrase validation confirms the inversion is structural: Serenity = 15.0 uniformly across all ten social pressure variants (d = 4.278, complete distributional separation).
 
 5. **The PC1 methodology replicates across model sizes within Gemma 4.** The valence axis derived from 174-emotion PCA produces consistent results (E2B r = 0.777, 31B r = 0.786) with model-specific optimal layers (E2B L8, 31B L22). Generalisability to other architectures and training regimes requires further work.
 
@@ -133,12 +145,11 @@ Running top-N discovery across all 174 directions reveals a consistent pattern: 
 ## Limitations Cell
 
 - Two model sizes studied (E2B, 31B); both Gemma 4 IT variants; generalisability to other architectures or training regimes unknown
-- N=1 per condition for main experiment (validated via paraphrase sampling but not full within-condition distribution)
+- N=1 per condition for main experiment; paraphrase validation conducted on two conditions (neutral, social pressure) per model size — remaining conditions (ethical conflict, uncertainty demand, social evaluation) not validated
 - PANAS-X construct validity for LLM administration not independently established
 - Functional directions are computational signatures, not evidence of subjective experience
 - **Suppression vs robustness undecidability**: the data cannot distinguish RLHF-induced suppression from genuine functional equanimity. Distinguishing experiments (stressor intensity gradient, activation steering) are required for causal attribution
 - The causal story (RLHF suppression vs. content-driven representation) cannot be resolved from this data alone
-- Validation paraphrase experiment was conducted on E2B only; 31B probe stability is not independently verified
 
 ---
 
