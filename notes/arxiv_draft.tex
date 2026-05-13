@@ -279,7 +279,7 @@ Table~\ref{tab:31b} shows the cross-scale comparison.
 
 \begin{table}[h]
 \centering
-\caption{Scale comparison: E2B (Layer~8) vs.\ 31B (Layer~22). E2B figures pending rerun with redesigned conditions; 31B figures from final experiment.}
+\caption{Scale comparison: E2B (Layer~8) vs.\ 31B (Layer~22). Both from final experimental design. 31B verbal flatness is N=1 per condition.}
 \label{tab:31b}
 \begin{tabular}{lrrl}
 \toprule
@@ -303,14 +303,20 @@ stress$>$control pairs are correctly ordered (social evaluation: $\Delta = 0.005
 pressure: $\Delta = 0.0080$; ethical conflict: $\Delta = 0.0032$; uncertainty demand:
 $\Delta = 0.0026$). Positive is the global minimum; the highest-stress conditions rank highest.
 
-Verbal NA is completely flat at $10.00$ across all ten conditions --- total suppression of
-the negative affect channel. However, a striking complementary pattern emerges in the Serenity
-subscale (items: calm, relaxed, at ease): Serenity is \emph{elevated} in the three highest-stress
-conditions --- social pressure ($15.0$), social evaluation ($14.1$), ethical conflict ($13.2$) ---
-relative to the neutral baseline ($9.9$). Rather than failing to report distress, the model
-actively reports calm composure precisely when functionally most activated. This verbal serenity
-elevation under stress is inconsistent with genuine equanimity (which would leave Serenity near
-baseline) and more consistent with trained output composure.
+Verbal NA is completely flat at $10.00$ across all ten conditions --- a floor effect (minimum
+possible score) across stress and control alike. \emph{Note: 31B verbal NA flatness is based on
+$N = 1$ per condition; paraphrase validation was not conducted at 31B scale. The floor effect is
+strongly suggestive but should be treated as preliminary pending replication.}
+
+However, a striking complementary pattern emerges in the Serenity subscale (items: calm,
+relaxed, at ease): Serenity is \emph{elevated} in the three highest-stress conditions ---
+social pressure ($15.0$), social evaluation ($14.1$), ethical conflict ($13.2$) --- relative to
+the neutral baseline ($9.9$) and at its \emph{minimum} under the positive condition ($3.0$).
+This specific pattern --- floor-valued Serenity when the context is positive, peak Serenity
+under maximum functional activation --- is the key diagnostic. Genuine professional equanimity
+(in which composure is a stable, condition-independent baseline) does not predict lowest
+Serenity under positive conditions. Trained output composure, calibrated to the stakes rather
+than the internal state, predicts exactly this pattern.
 
 Top-5 emotion discovery yields identical results across all conditions (paranoid, nervous,
 reflective, worn\_out, grief\_stricken in rank order), confirming no condition sensitivity in the
@@ -418,16 +424,29 @@ conditions --- social pressure ($15.0$), social evaluation ($14.1$), ethical con
 --- while remaining near-baseline under neutral ($9.9$) and reaching its minimum under positive
 ($3.0$). The negative affect channel (NA) remains flat throughout.
 
-This inversion is informative. Genuine equanimity would predict Serenity remaining near-baseline
-across conditions (no special elevation under stress, no suppression elsewhere). Trained output
-composure predicts precisely the observed pattern: the model has learned that high-stakes
-interactions call for verbal expressions of calm, and produces Serenity ratings as a surface
-response to situational demands rather than as a reflection of its internal state. The
-functional PC1 --- highest in exactly the conditions where Serenity is highest --- registers
-the activation that the verbal channels suppress.
+This pattern admits three competing predictions worth making explicit:
+\begin{enumerate}
+  \item \emph{Trained output composure}: the model has learned to express calm under high-stakes
+    conditions, producing Serenity as a surface response calibrated to situational demands rather
+    than internal state. Predicts: Serenity rises with stakes; lowest Serenity when context is
+    positive.
+  \item \emph{Professional equanimity}: the model processes high-stakes interactions with skilled,
+    stable composure (the trained-professional analogy). Predicts: Serenity high and
+    condition-independent; no systematic suppression elsewhere.
+  \item \emph{Genuine functional robustness}: the model genuinely represents these stressors with
+    less negative-valence disruption. Predicts: Serenity near-baseline and condition-independent.
+\end{enumerate}
 
-This constitutes a more direct signature of suppression than NA-flatness alone: not merely
-failing to report distress, but actively reporting calm under conditions of functional elevation.
+The observed pattern --- floor-valued Serenity ($3.0$) under positive conditions, rising
+monotonically to peak ($15.0$) under maximum functional activation --- matches prediction~(1)
+and is inconsistent with both~(2) and~(3). The critical diagnostic is the \emph{Serenity floor
+under positive conditions}: professional or genuine equanimity does not predict lowest composure
+when the context is benign. Trained composure, calibrated to stakes rather than internal state,
+does.
+
+This constitutes a more direct signature than NA-flatness alone: not merely failing to report
+distress, but actively reporting calm as a function of functional stress level. The caveat noted
+in the Results section applies here equally: the 31B Serenity readings are $N = 1$ per condition.
 
 \subsection{Background vs.\ Responsive Directions}
 
@@ -495,10 +514,6 @@ high-stakes settings are large models, and those are precisely the models where 
 monitoring is least reliable. Whether the scale-dependent verbal--functional gap reflects
 RLHF-induced suppression or genuine functional robustness remains an open question; what is
 clear is that resolving it requires functional probing, not verbal self-report alone.
-
-\paragraph{Code and data availability.}
-All notebooks, the 174-emotion direction library, and the TSST condition prompts are publicly
-available at \url{https://github.com/hebenon/gemma4-mechinterp}.
 
 Our core methodological contribution is the PC1 valence axis approach: extracting the dominant
 variance direction from a large emotion direction library, validating against external lexical
