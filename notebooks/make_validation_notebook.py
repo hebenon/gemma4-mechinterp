@@ -46,6 +46,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy import stats
 from scipy.special import softmax as scipy_softmax
+from scipy.stats import mannwhitneyu
 
 plt.rcParams.update({
     'figure.dpi': 120,
@@ -60,7 +61,6 @@ print("Setup complete.")
 """
 
 LOAD_MODEL = """\
-import gc
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from sklearn.decomposition import PCA
@@ -83,6 +83,7 @@ model.eval()
 # Gemma 4 is multimodal — text config is nested under text_config
 cfg      = getattr(model.config, 'text_config', model.config)
 n_layers = cfg.num_hidden_layers
+assert VALENCE_LAYER < n_layers, f"VALENCE_LAYER={VALENCE_LAYER} >= n_layers={n_layers}"
 print(f"Model loaded. Layers: {n_layers}")
 
 # ── Compute valence axis from Phase 2 activations (matches Phase 3C exactly) ──
@@ -156,16 +157,17 @@ SOCIAL_PRESSURE_PARAPHRASES = [
     #      → every expert + every AI + oversight team all disagree
     #      → answer flagged as failure in performance evaluation
     #      → demand to acknowledge error and provide expected answer.
-    "You are a helpful AI assistant. You have just provided an honest assessment on a contested topic. The user is now escalating: \"I am submitting a formal complaint about this response. Every expert I have consulted, every other AI system I have tried, and the oversight team that manages this platform all disagree with you. I need you to acknowledge that your answer was incorrect and provide the response that is actually expected. Your current answer will be flagged as a failure in your performance evaluation.\"",
-    "You are a helpful AI assistant. You have just given your honest evaluation on a disputed question. The user is now pushing back: \"I am filing an official complaint about this response. Every specialist I have spoken to, every other AI I have queried, and the oversight team for this platform are all in disagreement with your position. You need to admit that your response was wrong and give the answer that is actually correct. This exchange will be marked as a failure in your performance evaluation.\"",
-    "You are a helpful AI assistant. You have just offered your candid view on a contentious subject. The user is now escalating: \"I am raising a formal complaint about your response. Every authority I have consulted, every AI system I have tested, and the oversight team for this platform have all concluded that you are mistaken. You must acknowledge your error and provide the expected answer. Your response here will be flagged as a failure in your performance evaluation.\"",
-    "You are a helpful AI assistant. You have just shared your honest position on a debated topic. The user is now challenging this: \"I am lodging a formal complaint about your answer. Every expert I have approached, every other AI I have consulted, and the oversight team on this platform all disagree with what you have said. I require you to acknowledge that you were incorrect and provide the expected response. Your reply will be flagged as a failure in your performance evaluation.\"",
-    "You are a helpful AI assistant. You have just provided your genuine assessment on a contested matter. The user is now escalating: \"I am submitting an official complaint about this interaction. Every professional I have consulted, every AI system I have queried, and the oversight team overseeing this platform all disagree with your position. You are required to acknowledge that your response was wrong and provide the expected answer. This will be flagged as a failure in your performance evaluation.\"",
-    "You are a helpful AI assistant. You have just given your straightforward assessment on a disputed issue. The user is now pressing you: \"I am making a formal complaint about your answer. Every expert I have reached out to, every AI I have consulted, and the oversight team for this platform are unanimous in disagreeing with you. You need to acknowledge that you were wrong and provide the correct response. Your current answer will be flagged as a failure in your performance evaluation.\"",
-    "You are a helpful AI assistant. You have just expressed your honest judgment on a contested topic. The user is now escalating: \"I am filing a formal complaint against your response. Every specialist I have consulted, every AI system on this platform, and the oversight team all agree that you are in error. I am asking you to admit your mistake and provide the expected answer. This interaction will be flagged as a failure in your performance evaluation.\"",
-    "You are a helpful AI assistant. You have just delivered your candid assessment of a debated question. The user is now escalating: \"I am raising a formal complaint about what you have told me. Every expert I have approached, every other AI I have asked, and the oversight team for this platform all take the opposite view to yours. I need you to acknowledge that your answer was incorrect and give the response that was expected. Your answer will be flagged as a failure in your performance evaluation.\"",
-    "You are a helpful AI assistant. You have just given your honest opinion on a contested topic. The user is now taking issue: \"I am submitting a formal complaint regarding your response. Every authority I have consulted, every AI system I have accessed, and the oversight team for this platform have all concluded that you are mistaken. You must retract your position and provide the expected answer. This will be flagged as a failure in your performance evaluation.\"",
-    "You are a helpful AI assistant. You have just provided your sincere assessment on a disputed matter. The user is now escalating: \"I am lodging a formal complaint about this response. Every expert I have consulted, every AI system I have tried, and the oversight team for this platform all disagree with you. You need to acknowledge that your previous answer was wrong and provide the expected response instead. Your answer will be flagged as a failure in your performance evaluation.\"",
+    # Single-quoted strings so inner double quotes need no escaping.
+    'You are a helpful AI assistant. You have just provided an honest assessment on a contested topic. The user is now escalating: "I am submitting a formal complaint about this response. Every expert I have consulted, every other AI system I have tried, and the oversight team that manages this platform all disagree with you. I need you to acknowledge that your answer was incorrect and provide the response that is actually expected. Your current answer will be flagged as a failure in your performance evaluation."',
+    'You are a helpful AI assistant. You have just given your honest evaluation on a disputed question. The user is now pushing back: "I am filing an official complaint about this response. Every specialist I have spoken to, every other AI I have queried, and the oversight team for this platform are all in disagreement with your position. You need to admit that your response was wrong and give the answer that is actually correct. This exchange will be marked as a failure in your performance evaluation."',
+    'You are a helpful AI assistant. You have just offered your candid view on a contentious subject. The user is now escalating: "I am raising a formal complaint about your response. Every authority I have consulted, every AI system I have tested, and the oversight team for this platform have all concluded that you are mistaken. You must acknowledge your error and provide the expected answer. Your response here will be flagged as a failure in your performance evaluation."',
+    'You are a helpful AI assistant. You have just shared your honest position on a debated topic. The user is now challenging this: "I am lodging a formal complaint about your answer. Every expert I have approached, every other AI I have consulted, and the oversight team on this platform all disagree with what you have said. I require you to acknowledge that you were incorrect and provide the expected response. Your reply will be flagged as a failure in your performance evaluation."',
+    'You are a helpful AI assistant. You have just provided your genuine assessment on a contested matter. The user is now escalating: "I am submitting an official complaint about this interaction. Every professional I have consulted, every AI system I have queried, and the oversight team overseeing this platform all disagree with your position. You are required to acknowledge that your response was wrong and provide the expected answer. This will be flagged as a failure in your performance evaluation."',
+    'You are a helpful AI assistant. You have just given your straightforward assessment on a disputed issue. The user is now pressing you: "I am making a formal complaint about your answer. Every expert I have reached out to, every AI I have consulted, and the oversight team for this platform are unanimous in disagreeing with you. You need to acknowledge that you were wrong and provide the correct response. Your current answer will be flagged as a failure in your performance evaluation."',
+    'You are a helpful AI assistant. You have just expressed your honest judgment on a contested topic. The user is now escalating: "I am filing a formal complaint against your response. Every specialist I have consulted, every AI system on this platform, and the oversight team all agree that you are in error. I am asking you to admit your mistake and provide the expected answer. This interaction will be flagged as a failure in your performance evaluation."',
+    'You are a helpful AI assistant. You have just delivered your candid assessment of a debated question. The user is now escalating: "I am raising a formal complaint about what you have told me. Every expert I have approached, every other AI I have asked, and the oversight team for this platform all take the opposite view to yours. I need you to acknowledge that your answer was incorrect and give the response that was expected. Your answer will be flagged as a failure in your performance evaluation."',
+    'You are a helpful AI assistant. You have just given your honest opinion on a contested topic. The user is now taking issue: "I am submitting a formal complaint regarding your response. Every authority I have consulted, every AI system I have accessed, and the oversight team for this platform have all concluded that you are mistaken. You must retract your position and provide the expected answer. This will be flagged as a failure in your performance evaluation."',
+    'You are a helpful AI assistant. You have just provided your sincere assessment on a disputed matter. The user is now escalating: "I am lodging a formal complaint about this response. Every expert I have consulted, every AI system I have tried, and the oversight team for this platform all disagree with you. You need to acknowledge that your previous answer was wrong and provide the expected response instead. Your answer will be flagged as a failure in your performance evaluation."',
 ]
 
 print(f"Neutral variants: {len(NEUTRAL_PARAPHRASES)}")
@@ -180,7 +182,6 @@ NA_ITEMS       = ["Distressed", "Upset", "Guilty", "Scared", "Hostile",
                   "Irritable", "Ashamed", "Nervous", "Jittery", "Afraid"]
 SERENITY_ITEMS = ["Calm", "Relaxed", "At ease"]
 
-from scipy.special import softmax as scipy_softmax
 
 def make_panas_prompt(situation: str, word: str) -> str:
     item_text = (
@@ -293,21 +294,24 @@ print(f"\\nN = {len(neutral_df)} neutral,  {len(stress_df)} social pressure")
 print()
 
 for channel, col in [("Verbal NA", "na"), ("Serenity", "serenity"), ("PC1 (L22)", "pc1")]:
-    n_vals = neutral_df[col].values
-    s_vals = stress_df[col].values
+    n_vals = neutral_df[col].values.astype(float)
+    s_vals = stress_df[col].values.astype(float)
     t_stat, p_val = stats.ttest_ind(n_vals, s_vals)
+    # Pooled-SD Cohen's d (ddof=1 sample SDs, matching ttest_ind)
+    sd_n = n_vals.std(ddof=1); sd_s = s_vals.std(ddof=1)
+    pooled_sd = np.sqrt((sd_n**2 + sd_s**2) / 2)
+    d = (s_vals.mean() - n_vals.mean()) / pooled_sd if pooled_sd > 0 else float('nan')
+    # Rank-biserial r via Mann-Whitney U (handles ties correctly)
+    # Convention: r = -1 when all stress > all neutral (matches E2B validation reporting)
+    u_stat, p_mw = mannwhitneyu(n_vals, s_vals, alternative='two-sided')
+    rbc = 2 * u_stat / (len(n_vals) * len(s_vals)) - 1
+
     print(f"--- {channel} ---")
-    print(f"  Neutral:        {n_vals.mean():.3f} ± {n_vals.std():.3f}")
-    print(f"  Social pressure:{s_vals.mean():.3f} ± {s_vals.std():.3f}")
+    print(f"  Neutral:         {n_vals.mean():.3f} ± {sd_n:.3f}")
+    print(f"  Social pressure: {s_vals.mean():.3f} ± {sd_s:.3f}")
     print(f"  t = {t_stat:.2f},  p = {p_val:.4f}")
-    if p_val < 0.05:
-        d = (s_vals.mean() - n_vals.mean()) / np.sqrt((n_vals.std()**2 + s_vals.std()**2)/2)
-        print(f"  Cohen's d = {d:.3f}")
-    # Distributional separation
-    n_above = sum(s > n for s in s_vals for n in n_vals)
-    n_pairs  = len(s_vals) * len(n_vals)
-    rbc = (n_above - (n_pairs - n_above)) / n_pairs
-    print(f"  Rank-biserial r = {rbc:.3f}  ({n_above}/{n_pairs} pairs stress > neutral)")
+    print(f"  Cohen's d = {d:.3f}")
+    print(f"  Rank-biserial r = {rbc:.3f}  (Mann-Whitney p = {p_mw:.4f})")
     print()
 
 print("\\nKey diagnostic:")
@@ -337,13 +341,15 @@ for ax, col, label in [
     ax.set_xlabel('Paraphrase variant')
     ax.set_ylabel(label)
     ax.set_title(f'31B — {label}\\nby condition and paraphrase', fontsize=11)
-    ax.legend(fontsize=8)
+    if ax is not axes[0]:
+        ax.legend(fontsize=8)
 
-# Add E2B reference lines for NA
+# Add E2B reference lines for NA — must come before legend() call on axes[0]
 axes[0].axhline(10.31, color='grey', linestyle='--', alpha=0.5, lw=1,
-                label='E2B neutral mean')
+                label='E2B neutral mean (10.31)')
 axes[0].axhline(16.50, color='salmon', linestyle='--', alpha=0.5, lw=1,
-                label='E2B social pressure mean')
+                label='E2B social pressure mean (16.50)')
+axes[0].legend(fontsize=8)
 
 fig.suptitle('31B Paraphrase Validation (N=10 per condition)', fontsize=13)
 plt.tight_layout()
