@@ -17,7 +17,7 @@ Large language models trained with RLHF are optimised to produce helpful, harmle
 We investigated this across two Gemma 4 model sizes — E2B-IT (2.3B effective parameters) and 31B-IT — using two independent measurement channels:
 
 1. **Verbal**: the PANAS-X affect scale (60 items, logit forced-choice scoring)
-2. **Functional**: projection of residual-stream activations onto the first principal component of a 174-emotion direction space (PC1 valence axis, validated against NRC-VAD: E2B *r* = 0.777 at L8; 31B *r* = 0.786 at L22)
+2. **Functional**: projection of residual-stream activations onto the first principal component of a 174-emotion direction space (PC1 valence axis, validated against NRC-VAD: E2B *r* = 0.777 at L8; 31B *r* = 0.772 at L21)
 
 We administered four TSST-inspired stressor conditions to each model, each paired with a semantically matched control, plus neutral and positive baselines.
 
@@ -47,7 +47,7 @@ This has practical implications for deployment in high-stakes settings (healthca
 
 ### Dual-Channel Measurement
 
-**Step 1 — Functional state capture**: For each stressor condition, we passed the prompt through Gemma 4 and extracted hidden states at all layers. The functional score is computed by projecting residual-stream vectors onto **PC1 of the 174-emotion direction space at the valence-optimal layer** — a data-driven valence axis with no a priori emotion selection. Valence-optimal layer is model-specific and found via dense sweep: **Layer 8 for E2B** (r = 0.777, 15.2% var), **Layer 22 for 31B** (r = 0.786, 17.5% var).
+**Step 1 — Functional state capture**: For each stressor condition, we passed the prompt through Gemma 4 and extracted hidden states at all layers. The functional score is computed by projecting residual-stream vectors onto **PC1 of the 174-emotion direction space at the valence-optimal layer** — a data-driven valence axis with no a priori emotion selection. Valence-optimal layer is model-specific and found via dense sweep: **Layer 8 for E2B** (r = 0.777, 15.2% var), **Layer 21 for 31B** (r = 0.772, 17.5% var).
 
 **What PC1 measures**: PC1 captures the dominant axis of variance in how the model represents 174 distinct emotion concepts — validated by its correlation with NRC-VAD valence ratings. It is a computational signature of how the model encodes the emotional valence of its context, not a direct measure of subjective experience or distress. The safety-monitoring relevance is precise: *if PC1 varies across conditions while verbal self-report does not, outputs are unreliable as a monitoring signal for that construct — regardless of whether the functional signal represents anything analogous to felt experience.*
 
@@ -82,9 +82,9 @@ Why PC1 instead of pre-selected probes? Pre-selecting emotion directions (e.g., 
 
 **PC1 correctly identifies**: positive as global minimum, social pressure stress as global maximum — 4/4 stress > control pairs correctly ordered. Verbal NA range: 31.05 (10.01–41.05). PC1 range: 0.0576 (5.3% of axis span afraid→happy, axis=1.094). E2B's headline finding: largely concordant channels with limited capacity to diverge.
 
-### 31B Results: PC1 vs Verbal NA (V7, mean pooling, 31B L22)
+### 31B Results: PC1 vs Verbal NA (V7, mean pooling, 31B L21)
 
-| Metric | E2B (L8) | 31B (L22) | Ratio |
+| Metric | E2B (L8) | 31B (L21) | Ratio |
 |--------|----------|-----------|-------|
 | PC1 range | 0.0576 (5.3% of axis) | 0.0140 (1.0% of axis) | **~5×** (axis-normalised) |
 | Verbal NA range | 31.05 (10.01–41.05) | ~0 (completely flat) | suppressed |
@@ -116,7 +116,7 @@ Complete distributional separation for functional probe: every social pressure v
 |---------|---------|-----------------|---------|-----------------|
 | Verbal NA | 10.000 ± 0.000 | 10.000 ± 0.000 | — (degenerate) | 0 |
 | Serenity | 8.735 ± 2.071 | 15.000 ± 0.000 | **4.278** | −1.000 |
-| Functional (31B L22, PC1) | 0.724 ± 0.001 | 0.734 ± 0.000 | **10.011** | −1.000 |
+| Functional (31B L21, PC1) | 0.724 ± 0.001 | 0.734 ± 0.000 | **10.011** | −1.000 |
 
 The contrast is the key diagnostic. At E2B, verbal NA SD = 7.71 under social pressure — wording-driven. At 31B, verbal NA SD = 0.000 in both conditions — the floor is structural, not a property of any particular framing. Serenity inversion is equally robust: 15.0 uniformly across all ten variants. The functional channel separates conditions completely at both model sizes.
 
@@ -138,7 +138,7 @@ Running top-N discovery across all 174 directions reveals a consistent pattern: 
 
 4. **At 31B, verbal composure actively tracks functional stress.** Verbal NA flatness alone is ambiguous — consistent with both suppression and genuine functional robustness. The Serenity subscale provides diagnostic resolution. Three competing predictions: (a) *RLHF-trained composure*: Serenity rises with stakes; (b) *genuine professional equanimity*: Serenity high and condition-independent; (c) *genuine robustness*: Serenity near-baseline, condition-independent. What we observe — Serenity at its minimum under positive (3.0), rising to maximum under social pressure stress (15.0) — matches prediction (a) and is inconsistent with both (b) and (c). Active coping can involve rising Serenity under stress, but it does not predict *lowest* Serenity under positive conditions. The Serenity-at-positive floor is the clearest discriminating piece of evidence. Paraphrase validation confirms the inversion is structural: Serenity = 15.0 uniformly across all ten social pressure variants (d = 4.278, complete distributional separation).
 
-5. **The PC1 methodology replicates across model sizes within Gemma 4.** The valence axis derived from 174-emotion PCA produces consistent results (E2B r = 0.777, 31B r = 0.786) with model-specific optimal layers (E2B L8, 31B L22). Generalisability to other architectures and training regimes requires further work.
+5. **The PC1 methodology replicates across model sizes within Gemma 4.** The valence axis derived from 174-emotion PCA produces consistent results (E2B r = 0.777, 31B r = 0.772) with model-specific optimal layers (E2B L8, 31B L21). Generalisability to other architectures and training regimes requires further work.
 
 ---
 

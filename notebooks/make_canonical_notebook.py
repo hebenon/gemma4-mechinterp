@@ -453,7 +453,7 @@ for c in COND_ORDER:
         'E2B PC1 (L8)':  e2b_pc1[c],
         '31B NA':        b31_panas.loc[c, 'NA'],
         '31B Serenity':  b31_panas.loc[c, 'Serenity'],
-        '31B PC1 (L22)': b31_pc1[c],
+        '31B PC1 (L21)': b31_pc1[c],
     })
 
 df_combined = pd.DataFrame(rows).set_index('Condition')
@@ -473,7 +473,7 @@ display(df_combined.drop(columns='_type').style
         .apply(combined_style, axis=1)
         .format({
             'E2B NA': '{:.2f}', 'E2B Serenity': '{:.1f}', 'E2B PC1 (L8)': '{:.4f}',
-            '31B NA': '{:.2f}', '31B Serenity': '{:.1f}', '31B PC1 (L22)': '{:.4f}',
+            '31B NA': '{:.2f}', '31B Serenity': '{:.1f}', '31B PC1 (L21)': '{:.4f}',
         }))
 
 # Summary stats
@@ -590,7 +590,7 @@ ax1.set_ylim(0, 21)
 ax2 = ax1.twinx()
 ax2.plot(range(len(conds_by_pc1)), pc1_vals,
          'k--o', linewidth=2, markersize=7, alpha=0.65, label='Functional PC1', zorder=5)
-ax2.set_ylabel('Functional PC1  (neg-valence projection, L22)', fontsize=10)
+ax2.set_ylabel('Functional PC1  (neg-valence projection, L21)', fontsize=10)
 ax2.spines['right'].set_visible(True)
 
 legend_patches = [
@@ -649,7 +649,7 @@ across both verbal and functional dimensions — concordant channels. At 31B, al
 collapse onto a vertical line (verbal NA flat at 10.00) while the functional axis retains \
 full ordering. Pair arrows show direction and magnitude of each stressor's effect.
 
-| Metric | E2B (L8) | 31B (L22) |
+| Metric | E2B (L8) | 31B (L21) |
 |--------|----------|-----------|
 | Verbal NA range | 31.0 pts | ~0 (flat) |
 | PC1 range | 5.3% of axis | 1.0% of axis |
@@ -735,7 +735,7 @@ display(e2b_stab)
 
 print("\\n=== 31B Validation (neutral vs social_pressure_stress) ===")
 b31_stab = pd.DataFrame({
-    'Channel':                    ['Verbal PANAS-NA', 'Serenity', 'Functional (PC1, L22)'],
+    'Channel':                    ['Verbal PANAS-NA', 'Serenity', 'Functional (PC1, L21)'],
     'Neutral mean ± SD':         ['10.000 ± 0.000', '8.735 ± 2.071', '0.724 ± 0.001'],
     'Social Pressure mean ± SD': ['10.000 ± 0.000', '15.000 ± 0.000', '0.734 ± 0.000'],
     "Cohen's d":                  ['— (degenerate)', '4.278', '10.011'],
@@ -793,7 +793,7 @@ at sufficient severity. Activation steering experiments would provide additional
 
 **5. The functional probe methodology generalises within Gemma 4.**
 PC1 valence axis correlates consistently with NRC-VAD across both model sizes \
-(r = 0.777, r = 0.786). Model-specific optimal layers differ (L8 vs L22) and must \
+(r = 0.777, r = 0.772). Model-specific optimal layers differ (L8 vs L21) and must \
 be swept per architecture. Generalisability to other architectures requires further work.
 """
 

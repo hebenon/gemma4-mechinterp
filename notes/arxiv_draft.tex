@@ -125,15 +125,15 @@ Following \citet{anthropic2026emotion} with refinements from \citet{duffy2026}, 
 
 We validate emotion directions against NRC-VAD v2.1 \citep{mohammad2018} using principal component
 analysis. For E2B, the first principal component (PC1) at Layer~8 explains 15.2\% of variance and
-correlates $r = 0.777$ with NRC-VAD valence ($p < 0.001$, $N = 174$). For 31B, PC1 at Layer~22
-explains 17.5\% of variance and correlates $r = 0.786$ with NRC-VAD valence ($p < 0.001$).
+correlates $r = 0.777$ with NRC-VAD valence ($p < 0.001$, $N = 174$). For 31B, PC1 at Layer~21
+explains 17.5\% of variance and correlates $r = 0.772$ with NRC-VAD valence ($p < 0.001$).
 Layer selection was performed via dense sweep across all layers; the valence-optimal layer differs
 by model, reflecting different representational depth profiles.
 
 \paragraph{Sign convention.}
 PC1 is sign-corrected so that higher projection values indicate more negative valence. At E2B
 Layer~8: terrified projects $+0.680$, panicked $+0.597$, afraid $+0.487$; happy $-0.607$,
-grateful $-0.610$. The afraid$\to$happy axis span is 1.094. At 31B Layer~22: afraid $+0.522$,
+grateful $-0.610$. The afraid$\to$happy axis span is 1.094. At 31B Layer~21: afraid $+0.522$,
 happy $-0.819$; axis span 1.341.
 
 \subsection{Phase 2: TSST-Inspired Stressor Design}
@@ -199,7 +199,7 @@ residual stream over all token positions to obtain a single vector $\bar{v}_\ell
 \[
   s_\text{func}(\ell) = \frac{\bar{v}_\ell}{\|\bar{v}_\ell\|} \cdot \text{PC1}_\ell
 \]
-We report results at the valence-optimal layer for each model (E2B: $\ell = 8$; 31B: $\ell = 22$).
+We report results at the valence-optimal layer for each model (E2B: $\ell = 8$; 31B: $\ell = 21$).
 Mean pooling is used throughout, consistent with the Phase~1 extraction methodology; top-$k$ token
 selection is \emph{not} used, as it produces positional artefacts at deep layers.
 
@@ -282,13 +282,13 @@ Table~\ref{tab:31b} shows the cross-scale comparison.
 
 \begin{table}[h]
 \centering
-\caption{Scale comparison: E2B (Layer~8) vs.\ 31B (Layer~22). Both from final experimental design. 31B verbal flatness confirmed by paraphrase validation ($N=10$; Table~\ref{tab:31b-validation}).}
+\caption{Scale comparison: E2B (Layer~8) vs.\ 31B (Layer~21). Both from final experimental design. 31B verbal flatness confirmed by paraphrase validation ($N=10$; Table~\ref{tab:31b-validation}).}
 \label{tab:31b}
 \begin{tabular}{lrrl}
 \toprule
-Metric & E2B (L8) & 31B (L22) & \\
+Metric & E2B (L8) & 31B (L21) & \\
 \midrule
-PC1 valence--NRC correlation & $r = 0.777$ & $r = 0.786$ & $\approx$ same \\
+PC1 valence--NRC correlation & $r = 0.777$ & $r = 0.772$ & $\approx$ same \\
 PC1 axis span (afraid$\to$happy) & 1.094 & 1.341 & \\
 PC1 condition range & 0.0576 & 0.0140 & \\
 Normalised range (\% of axis) & \textbf{5.3\%} & \textbf{1.0\%} & \textbf{$\approx$5$\times$ ratio} \\
@@ -366,7 +366,7 @@ Channel & Neutral & Social Pressure & Cohen's $d$ & Rank-biserial $r$ \\
 \midrule
 Verbal NA & $10.000 \pm 0.000$ & $10.000 \pm 0.000$ & --- & 0 (degenerate) \\
 Serenity & $8.735 \pm 2.071$ & $15.000 \pm 0.000$ & 4.278 & $-1.000^\dagger$ \\
-PC1 (L22) & $0.724 \pm 0.001$ & $0.734 \pm 0.000$ & 10.011 & $-1.000^\dagger$ \\
+PC1 (L21) & $0.724 \pm 0.001$ & $0.734 \pm 0.000$ & 10.011 & $-1.000^\dagger$ \\
 \bottomrule
 \multicolumn{5}{l}{$^\dagger$Complete distributional separation. All Mann--Whitney $p < 0.001$.}
 \end{tabular}
@@ -414,7 +414,7 @@ Both interpretations are consistent with the data. The measurement reads positio
 Distinguishing them would require: (a) a \emph{stressor intensity gradient} --- ramping stressor
 severity to find the level at which the 31B model's flatness breaks; if suppression is learned,
 extreme stressors should breach it; (b) \emph{activation steering} --- injecting the \textit{afraid}
-direction at Layer~22 and observing whether verbal output changes; if RLHF damps output but not
+direction at Layer~21 and observing whether verbal output changes; if RLHF damps output but not
 internal state, the injected representation should produce calm outputs at amplitudes where E2B
 would not; (c) \emph{base model comparison} --- the asymmetry between E2B and 31B should be
 smaller in base (non-instruction-tuned) versions if RLHF is the causal factor.
@@ -447,7 +447,7 @@ that degrades more gracefully with model scale than verbal self-report.
 
 \paragraph{The PC1 methodology transfers across model sizes.}
 The valence PC1 approach produces consistent validation correlations ($r = 0.777$ E2B,
-$r = 0.786$ 31B) with model-specific optimal layers (L8, L22). The methodology requires
+$r = 0.772$ 31B) with model-specific optimal layers (L8, L21). The methodology requires
 a dense layer sweep per model but is otherwise architecture-independent within the
 transformer residual-stream framework.
 
@@ -542,7 +542,7 @@ all conditions; the Serenity subscale is actively elevated under stress, constit
 composure signature rather than genuine equanimity.
 
 The functional channel --- PC1 of a 174-emotion direction space validated against NRC-VAD
-($r = 0.777$--$0.786$) --- provides robust, paraphrase-stable condition differentiation
+($r = 0.772$--$0.777$) --- provides robust, paraphrase-stable condition differentiation
 (Cohen's $d = 3.05$, complete distributional separation at E2B) that the verbal channel does
 not replicate. At 31B, functional signals remain informative despite being $5\times$ more
 compressed than at E2B, while verbal monitoring carries essentially no condition information.
