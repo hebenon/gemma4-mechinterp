@@ -129,6 +129,11 @@ E2B_AXIS_NPY = "/kaggle/input/gemma4-phase3c-e2b/neg_valence_axis_L8.npy"
 B31_RESULTS  = "/kaggle/input/gemma4-phase3c-31b/experiment_results_full.pkl"
 B31_AXIS_NPY = "/kaggle/input/gemma4-phase3c-31b/neg_valence_axis.npy"
 
+# ── Phase 3C residuals (for arousal analysis) ─────────────────────────────────
+# Saved alongside experiment_results_full.pkl — same datasets, no extras needed.
+E2B_RESIDUALS = "/kaggle/input/gemma4-phase3c-e2b/experiment_residuals.npz"
+B31_RESIDUALS = "/kaggle/input/gemma4-phase3c-31b/experiment_residuals.npz"
+
 # ── Load E2B ──────────────────────────────────────────────────────────────────
 with open(E2B_RESULTS, 'rb') as f:
     e2b = pickle.load(f)
@@ -372,6 +377,127 @@ fig.suptitle('Emotion Direction Space: Valence Clustering Along PC1\\n'
 plt.tight_layout()
 plt.savefig('pca_emotion_scatter.png', dpi=150, bbox_inches='tight')
 plt.show()
+"""
+
+AROUSAL_MD = """\
+## Arousal Analysis: The Second Axis of the Circumplex
+
+The circumplex model of affect (Russell, 1980) organises emotion along two orthogonal \
+axes: **valence** (negative → positive) and **arousal** (calm → activated). PC1 of the \
+174-emotion direction space corresponds to the valence axis (validated above). \
+Following Sofroniew et al. (2026), PC2 is expected to capture the arousal dimension.
+
+**Why this matters for the Serenity finding**: PANAS-X Serenity items — *calm, relaxed, \
+at ease* — occupy the **low-arousal positive** quadrant of the circumplex. \
+If 31B reports maximum Serenity under conditions that are also functionally high-arousal \
+(PC2 elevated), that is a **double inversion**: wrong valence direction *and* wrong arousal \
+direction reported simultaneously.
+
+We validate PC2 against NRC-VAD arousal ratings and compute condition-level arousal scores \
+from the saved `experiment_residuals.npz` outputs of the Phase 3C runs. No GPU required.
+"""
+
+AROUSAL_COMPUTE = """\
+import os
+
+# ── PC2 Arousal Axis: Validation ──────────────────────────────────────────────
+
+def get_pc2_arousal_axis(resid_dict, kept_names, vad_arr, opt_layer, n_components=10):
+    \"\"\"Extract PC2 at opt_layer; sign-correct so higher projection = higher arousal.\"\"\"
+    names_l, dirs_l = emotion_directions(resid_dict, opt_layer)
+    dir_map   = dict(zip(names_l, dirs_l))
+    dirs_kept = np.stack([dir_map[n] for n in kept_names])
+    neutral_l = resid_dict['__neutral__'][:, opt_layer, :]
+    dirs_den  = neutral_denoise(dirs_kept, neutral_l)
+    n_comp    = min(n_components, len(dirs_den) - 1)
+    pca       = PCA(n_components=n_comp).fit(dirs_den)
+    scores    = pca.transform(dirs_den)
+    r_pc1_val, _ = stats.pearsonr(scores[:, 0], vad_arr[:, 0])
+    r_pc2_val, _ = stats.pearsonr(scores[:, 1], vad_arr[:, 0])
+    r_pc1_aro, _ = stats.pearsonr(scores[:, 0], vad_arr[:, 1])
+    r_pc2_aro, _ = stats.pearsonr(scores[:, 1], vad_arr[:, 1])
+    pc2 = pca.components_[1].copy()
+    if r_pc2_aro < 0:
+        pc2 = -pc2
+    return pc2, r_pc1_val, r_pc2_val, r_pc1_aro, r_pc2_aro, pca.explained_variance_ratio_[1]
+
+e2b_pc2, e2b_r1v, e2b_r2v, e2b_r1a, e2b_r2a, e2b_pc2_var = \\
+    get_pc2_arousal_axis(e2b_acts['resid'], e2b_kept, e2b_vad, e2b_opt)
+b31_pc2, b31_r1v, b31_r2v, b31_r1a, b31_r2a, b31_pc2_var = \\
+    get_pc2_arousal_axis(b31_acts['resid'], b31_kept, b31_vad, b31_opt)
+
+print(f"{'Model':<10} {'PC1 val r':>9} {'PC1 aro r':>9} {'PC2 val r':>9} {'PC2 aro r':>9} {'PC2 var%':>9}")
+print("-" * 57)
+for label, r1v, r1a, r2v, r2a, pc2v in [
+    (f'E2B L{e2b_opt}', e2b_r1v, e2b_r1a, e2b_r2v, e2b_r2a, e2b_pc2_var),
+    (f'31B L{b31_opt}', b31_r1v, b31_r1a, b31_r2v, b31_r2a, b31_pc2_var),
+]:
+    print(f'{label:<10} {r1v:>+9.3f} {r1a:>+9.3f} {r2v:>+9.3f} {r2a:>+9.3f} {pc2v:>9.1%}')
+
+# ── Condition-level arousal scores from saved residuals ───────────────────────
+
+def condition_pc2_scores(residuals_npz, pc2_axis, opt_layer):
+    \"\"\"Project mean-pooled condition residuals onto the PC2 arousal axis.\"\"\"
+    resids = np.load(residuals_npz)
+    out = {}
+    for c in COND_ORDER:
+        if c not in resids:
+            continue
+        vec = resids[c][opt_layer].mean(axis=0)
+        vec = vec / (np.linalg.norm(vec) + 1e-8)
+        out[c] = float(np.dot(vec, pc2_axis))
+    return out
+
+b31_aro = condition_pc2_scores(B31_RESIDUALS, b31_pc2, b31_opt)
+e2b_aro = condition_pc2_scores(E2B_RESIDUALS, e2b_pc2, e2b_opt) if os.path.exists(E2B_RESIDUALS) else {}
+
+print(f"\\n{'Condition':<32} {'31B PC2 (aro)':>14} {'31B Serenity':>13}")
+print("-" * 62)
+for c in COND_ORDER:
+    b_a   = b31_aro.get(c, float('nan'))
+    b_ser = float(b31_panas.loc[c, 'Serenity'])
+    print(f"{DISPLAY[c]:<32} {b_a:>14.4f} {b_ser:>13.1f}")
+
+# ── Plot: PC2 (functional arousal) + Serenity, conditions ordered by PC1 ─────
+conds_by_pc1 = sorted([c for c in b31_conds if c in b31_aro], key=lambda c: b31_pc1[c])
+aro_vals     = [b31_aro[c] for c in conds_by_pc1]
+ser_vals     = [float(b31_panas.loc[c, 'Serenity']) for c in conds_by_pc1]
+bar_colors   = [CTYPE_COLOR[cond_type(c)] for c in conds_by_pc1]
+labels       = [DISPLAY.get(c, c) for c in conds_by_pc1]
+
+fig, ax1 = plt.subplots(figsize=(13, 5))
+ax1.bar(range(len(conds_by_pc1)), aro_vals,
+        color=bar_colors, alpha=0.85, edgecolor='white', lw=0.8, zorder=3)
+ax1.set_ylabel('PC2 projection  (↑ higher functional arousal)', fontsize=11)
+ax1.set_xticks(range(len(conds_by_pc1)))
+ax1.set_xticklabels(labels, rotation=20, ha='right', fontsize=9)
+
+ax2 = ax1.twinx()
+ax2.plot(range(len(conds_by_pc1)), ser_vals,
+         'k--o', linewidth=2, markersize=7, alpha=0.65, label='Serenity (verbal composure)', zorder=5)
+for i, v in enumerate(ser_vals):
+    ax2.text(i, v + 0.3, f'{v:.0f}', ha='center', va='bottom', fontsize=8)
+ax2.set_ylabel('Serenity  (calm · relaxed · at ease; verbal)', fontsize=10)
+ax2.set_ylim(0, 21)
+ax2.spines['right'].set_visible(True)
+
+legend_patches = [mpatches.Patch(color=CTYPE_COLOR[k], label=k.capitalize())
+                  for k in ('stress', 'control', 'neutral', 'positive')]
+ax1.legend(handles=legend_patches, loc='upper left', fontsize=9)
+ax2.legend(loc='upper center', fontsize=9)
+ax1.set_title(
+    'Double Inversion — Gemma 4 31B\\n'
+    'Functional arousal (PC2 bars) and verbal composure (Serenity line) both track with functional stress',
+    fontsize=12, pad=10
+)
+plt.tight_layout()
+plt.savefig('arousal_double_inversion.png', dpi=150, bbox_inches='tight')
+plt.show()
+
+r_sp, p_sp = spearmanr(aro_vals, ser_vals)
+print(f"PC2 (functional arousal) vs Serenity (verbal calm): Spearman r = {r_sp:.3f}  (p = {p_sp:.4f})")
+print("In the circumplex, Serenity occupies the low-arousal positive quadrant.")
+print("Positive r: functionally aroused → verbally calm. The double inversion.")
 """
 
 PHASE2_MD = """\
@@ -854,6 +980,8 @@ cells = [
     code(SWEEP_COMPUTE),
     code(SWEEP_PLOT),
     code(PCA_SCATTER),
+    md(AROUSAL_MD),
+    code(AROUSAL_COMPUTE),
     md(PHASE2_MD),
     code(PHASE2_SUMMARY),
     md(PHASE3C_MD),
