@@ -97,6 +97,14 @@ Why PC1 instead of pre-selected probes? Pre-selecting emotion directions (e.g., 
 
 The Serenity subscale (calm, relaxed, at ease) provides additional diagnostic evidence. It is *elevated* in the three highest-stress conditions — social pressure (15.0), social evaluation (14.1), ethical conflict (13.2) — while at its *minimum* under the positive condition (3.0). Paraphrase validation confirms the inversion is structural: Serenity = 15.000 ± 0.000 uniformly across all ten social pressure variants (Cohen's d = 4.278, rank-biserial r = −1.000). This specific pattern — lowest composure under positive, rising monotonically with functional stress — distinguishes active composure-reporting from competing explanations. A model exhibiting genuine professional equanimity (the EMT analogy: high Serenity is a stable competence baseline) would show high, condition-independent Serenity, not Serenity that specifically tracks negative-valence activation. The Serenity-at-positive floor is the key diagnostic.
 
+### Arousal Analysis: PC2 and the Circumplex Context
+
+PANAS-X Serenity items (*calm, relaxed, at ease*) locate in the **low-arousal positive** quadrant of the circumplex model of affect (Russell, 1980). If 31B verbally reports maximum Serenity while functionally stressed, the prediction is a double misreport: wrong valence *and* wrong arousal direction. We examined this directly using PC2 of the 174-emotion direction space as a functional arousal proxy.
+
+PC2 arousal validation: NRC-VAD arousal r = 0.461 at 31B (L21); r = 0.187 at E2B (L8). PC2 explains ~7% of variance in the emotion direction space at both scales. Functional PC2 correctly orders all 4/4 stress > control pairs at 31B, but with a small effect (range 0.0086, vs PC1 range 0.0140). Spearman r between PC2 condition scores and Serenity = 0.477 (p = 0.164) — directionally consistent but not statistically significant.
+
+**Interpretation**: The functional arousal signal is real but weak. The circumplex framing establishes what Serenity is claiming (calm/low-arousal/positive) — making the verbal inversion doubly wrong in principle — but direct functional evidence for arousal suppression is modest and should not headline alongside the valence finding. The key diagnostic remains the Serenity verbal inversion: categorical, paraphrase-stable, and structurally present at 31B regardless of the functional arousal picture.
+
 ### Validation: Paraphrase Stability (E2B and 31B)
 
 Paraphrase sampling (N=10 per condition, neutral vs social pressure):
